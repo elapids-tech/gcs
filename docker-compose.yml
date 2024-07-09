@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  backend:
+    container_name: idls_app_backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+      # - "5000:5000"
+    volumes:
+      - ./:/idls_app
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - udp_network
+
+  frontend:
+    container_name: idls_app_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    tty: true
+    environment:
+      NODE_ENV: development
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./frontend:/idls_app/frontend
+      - node_modules:/idls_app/frontend/node_modules
+
+volumes:
+  node_modules:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/frontend/node_modules
+      o: bind
+
+networks:
+  udp_network:
+    name: udp_network
+      
+  # frontend:
+  #   build:
+  #     context: .
+  #     dockerfile: ./frontend/Dockerfile
+  #   container_name: idls_app_frontend
+  #   volumes:
+  #     - ./frontend:/idls_app/frontend
+  #   # command: sh -c "cd /idls_app/frontend && npm start"
+  #   command: sh -c "npm start"
+  #   ports:
+  #     - "3000:3000"
+  #   stdin_open: true

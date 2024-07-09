@@ -1,0 +1,72 @@
+.App {
+  text-align: left;
+  position: relative;
+  min-height: 100vh;
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  font-size: calc(10px + 2vmin);
+  color: white;
+  padding: 20px;
+  padding-bottom: 150px; /* CLIタブのために余白を追加 */
+}
+
+.title {
+  font-size: 30px; /* タイトルの文字サイズを変更します */
+}
+
+.small-text {
+  font-size: 18px; /* 小さめのテキストのサイズを指定します */
+}
+
+.button-row {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  margin: 20px 0;
+}
+
+button {
+  margin: 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+}
+
+hr {
+  width: 100%;
+  margin: 20px 0;
+}
+
+.cli-tab {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 150px;
+  background: #333;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  resize: vertical;
+  overflow: hidden;
+  padding: 20px;
+}
+
+.cli-tab-content {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.cli-tab-resizer {
+  width: 100%;
+  height: 10px;
+  background: #444;
+  cursor: ns-resize;
+}
