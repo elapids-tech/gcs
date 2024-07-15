@@ -20,25 +20,9 @@ export default function App() {
   return (
     <Canvas shadows camera={{ position: [10, 12, 12], fov: 25 }}>
       <group position={[0, -0.5, 0]}>
-        <Center top>
-          <Suzi rotation={[-0.63, 0, 0]} scale={2} />
-        </Center>
-        <Center top position={[-2, 0, 2]}>
-          <mesh castShadow>
-            <sphereGeometry args={[0.5, 64, 64]} />
-            <meshStandardMaterial color="#9d4b4b" />
-          </mesh>
-        </Center>
-        <Center top position={[2.5, 0, 1]}>
-          <mesh castShadow rotation={[0, Math.PI / 4, 0]}>
-            <boxGeometry args={[0.7, 0.7, 0.7]} />
-            <meshStandardMaterial color="#9d4b4b" />
-          </mesh>
-        </Center>
-        <Shadows />
         <Grid position={[0, -0.01, 0]} args={gridSize} {...gridConfig} />
       </group>
-      <OrbitControls makeDefault />
+      <OrbitControls enableDamping={false} />
       <Environment preset="city" />
       <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
         <GizmoViewport axisColors={['#9d4b4b', '#2f7f4f', '#3b5b9d']} labelColor="white" />
@@ -47,17 +31,4 @@ export default function App() {
   )
 }
 
-const Shadows = memo(() => (
-  <AccumulativeShadows temporal frames={100} color="#9d4b4b" colorBlend={0.5} alphaTest={0.9} scale={20}>
-    <RandomizedLight amount={8} radius={4} position={[5, 5, -10]} />
-  </AccumulativeShadows>
-))
 
-function Suzi(props) {
-  const { nodes } = useGLTF('https://vazxmixjsiawhamofees.supabase.co/storage/v1/object/public/models/suzanne-high-poly/model.gltf')
-  return (
-    <mesh castShadow receiveShadow geometry={nodes.Suzanne.geometry} {...props}>
-      <meshStandardMaterial color="#9d4b4b" />
-    </mesh>
-  )
-}
