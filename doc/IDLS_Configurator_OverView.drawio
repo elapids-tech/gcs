@@ -1,1 +1,101 @@
-<mxfile host="Electron" modified="2024-06-17T14:51:43.699Z" agent="5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/20.8.16 Chrome/106.0.5249.199 Electron/21.4.0 Safari/537.36" etag="kFTKwlV7djzrklNd0XV3" version="20.8.16" type="device" pages="3"><diagram name="概要" id="KyckfTdw7PnfaO1ii580">zZZRb5swEMc/zT1GKjgB82gC6VYpWqVIrbY3C3uBDWLmOIHs088G00Ch0iatJU8c//9hfD/uZACti/pe0jLdCsZzcO9YDSgC13WWaKkvRrm0Cl5ZYS8zZpOuwi77za14Z9VTxvhxkKiEyFVWDsVEHA48UQONSimqYdp3kQ/fWtI9Hwm7hOZj9TljKrWq4wVX4xPP9ql9NXb91ihol2wrOaaUiaonoRjQWgqh2qio1zw38Dou7XObN9yXjUl+UH/zwA9fkq9sG7KnX963h6di+xilC7dd5Uzzky2YykQ025c/uYQYAXaAxBCvICRAfIg9IBiCoLOwsbQebkyAQyB2zaO6dBClOB0YN/twAIVVmim+K2li3Eq3jdZSVeTWHtdlSz1zqXjdk2yd91wUXMmLTrEutshtzwX2tup9QM9qae/bdRq1PbN/WfiKVQeW7D9QXo0oN/RcIGETICBOFwS3Rm85hc99J3yOx54XRbL4Up+Tsnqo8LbcLZwJfD4ESwjDpuc0uM3/oDZCNAHyTWq3h2082xBrZhHgyPDTgZlrD3DcTXEMAZkdJH4F0lvNDRKNQD5+jmbn5N1cwy0nGk6Pp29ODhMQCMLZsb1ur/mxTZwOs0P6uBHUt9d/oMbr/Umi+A8=</diagram><diagram id="Tcn5WZPddWgwZxQtCXYK" name="作業フロー">zVdLc5swEP41e2wHEA/pCAanl/aSzrS3DjWKIYMtBuPY7q/vClbY2NhJPBM7Jy/frrTSt9qHgU0W24c6rfLvKpMlOFa2BRaD49guc/FHI7sO4R4B87rIyGgPPBb/JIEWoesik6uBYaNU2RTVEJyp5VLOmgGW1rXaDM2eVDn0WqVzeQI8ztLyFP1VZE1Ot3CCPf5NFvPceLZ90WkWqTGmm6zyNFObA4glwCa1Uk0nLbYTWWryDC/duukZbX+wWi6btyzI/rxsK+vJ+fF7t36IVaN89+cX2uUlLdd0YUgYcAfCTmAgAhLCEBIOkQcRIh7wCIRHN2t2hq5arZeZ1B5tYNEmLxr5WKUzrd3gA0EsbxYlqcm3rBu5PXspu6cK35hUC9nUOzShBcwndul5efS52cfKNgHID+JklqX0POb9znsGUSAS30GoM07oIY8xURxxw3VghCnZcFQJ4HZr4wMPQSSfjmvm3pts/xzZnBuBHdMvQhKiyT4Ojl/iWaO/NUpzLV0bNMyLGAQKLkSxlrXKbo1bREx0PEPPbGiDELQP75xaWh45D64SIKY6B/Xh47Nnjlpj4UNkaeMQn8/02uscnBk/hXXR6XUu+trSGYuhygGBMQ0gTCC0tYBn4P6FVLBukgrYxgapYI/UHScYSQXxUakQnEsFTVvHumtixVoi3TZo+KZiXew/G6Muvzej/JTRe5PEzPBEJPl3b3fidZJwFxzW5E0ICoYdaiwtR/nhH8WPGWOP8xI7e2IaQGiaRFvcQ96WTk+XvL5X4aRFSXySzWF0UCiFrvvUSGxd90/qdVWrZ5yTV1+fV2p5IVY4rVYanJVqnd0kdh47Ch57YwXoo/yO6OHnfvJudQf/X1jyHw==</diagram><diagram id="Uy_f0hMSyoCAQ_gg5zSW" name="UI設計">jZJNT4QwEIZ/DUcToOyCR8VVLxoj2V09NnSkNYWSblnAX2+RKR/ZbOKp02c+OvNOPZKW3ZOmNX9RDKQX+qzzyIMXhkFEInsMpB9JskFQaMEwaAaZ+AGEPtJGMDitAo1S0oh6DXNVVZCbFaNaq3Yd9qXk+tWaFnABspzKS3oUzHCkwfZ2djyDKDg+nYTx6CipC8ZJTpwy1S4Q2Xkk1UqZ0Sq7FOQgntNlzHu84p0a01CZ/yTk+9fj5vz+cfh8q773QO7iQ3MTjlXOVDY4MDZreqeAVk3FYCjie+S+5cJAVtN88LZ255ZxU0p7C6yJ5UAb6K72GUzT228DqgSjexviErYoGP6YwAnYzvrHjvGF9FGCkOLOi6n2LIs1UBl3nTfw51v8Y7L7BQ==</diagram></mxfile>
+<mxfile host="Electron" modified="2024-07-12T08:40:53.159Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.0.3 Chrome/114.0.5735.289 Electron/25.8.4 Safari/537.36" etag="lT0yG5EWXhqq0EHKloCQ" version="22.0.3" type="device" pages="3">
+  <diagram id="qIAXnQp4ejcZ3En0vKtI" name="開発フェーズ">
+    <mxGraphModel dx="1434" dy="836" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="H6su-ZvEpCu7qMunxcAP-1" value="3Dビュアーを作成" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="920" y="340" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="H6su-ZvEpCu7qMunxcAP-2" value="ドローン&lt;br&gt;コントロール&lt;br&gt;パネル&lt;br&gt;作成" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="710" y="330" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="Cj4UUGhquVSb6qy1wkXg-1" value="&lt;h1&gt;必要な機能&lt;/h1&gt;" style="text;html=1;strokeColor=default;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="110" y="40" width="510" height="410" as="geometry" />
+        </mxCell>
+        <mxCell id="Cj4UUGhquVSb6qy1wkXg-3" value="プロジェクト管理" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="310" y="110" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="Cj4UUGhquVSb6qy1wkXg-4" value="フライトパスエディタ" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="160" y="250" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="Cj4UUGhquVSb6qy1wkXg-5" value="コントロールパネル" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="430" y="260" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="Cj4UUGhquVSb6qy1wkXg-6" value="テレメトリーモニタ" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="250" y="330" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3XeIZp7PK6LM1uGF6eY_-1" value="3D ビューアー" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="160" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3XeIZp7PK6LM1uGF6eY_-2" value="マーカー" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="500" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3XeIZp7PK6LM1uGF6eY_-3" value="マーカーコーナーポイント" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="580" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3XeIZp7PK6LM1uGF6eY_-4" value="ドローン設定" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="170" y="130" width="120" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="概要" id="KyckfTdw7PnfaO1ii580">
+    <mxGraphModel dx="1418" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="j7rAYdMBdVq6ZJVmMPDh-2" value="arco markerの座標と姿勢" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="80" y="90" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="j7rAYdMBdVq6ZJVmMPDh-5" value="カメラ" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="80" y="490" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="16dW-mc-OxvcpwJw8MpS-1" value="画像" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="280" y="490" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="16dW-mc-OxvcpwJw8MpS-2" value="位置推定" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="880" y="650" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="16dW-mc-OxvcpwJw8MpS-3" value="PID" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="680" y="490" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="16dW-mc-OxvcpwJw8MpS-4" value="出力" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="880" y="490" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="16dW-mc-OxvcpwJw8MpS-5" value="" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="80" y="650" width="120" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="Tcn5WZPddWgwZxQtCXYK" name="作業フロー">
+    <mxGraphModel dx="1434" dy="854" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d_vxp0f2NXyuGDoto64T-1" value="アプリ起動" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="50" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="d_vxp0f2NXyuGDoto64T-2" value="プロジェクト選択" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="340" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="d_vxp0f2NXyuGDoto64T-6" value="トップページ&lt;br&gt;プロジェクト単位で作業する。&lt;br&gt;機能&lt;br&gt;・新規プロジェクト作成&lt;br&gt;・プロジェクトリストを管理" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="285" y="150" width="270" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="d_vxp0f2NXyuGDoto64T-7" value="メイン画面" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="285" y="480" width="270" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="d_vxp0f2NXyuGDoto64T-8" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="354" y="650" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="d_vxp0f2NXyuGDoto64T-9" value="" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="150" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="d_vxp0f2NXyuGDoto64T-10" value="まずは設定ファイルを開く&lt;br&gt;projects.json" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="530" y="130" width="270" height="150" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
