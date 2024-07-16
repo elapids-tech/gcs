@@ -1,6 +1,16 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Split from "react-split";
 import './styles.css';
+
+function ControlPanel() {
+  return (
+    <div>
+      read プロジェクトファイル
+      スタートボタン
+      ストップボタン
+    </div>
+  );
+};
 
 const R1Left = () => {
   return (
