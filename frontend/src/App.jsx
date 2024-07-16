@@ -1,39 +1,59 @@
-import React, { memo, useEffect, useState } from 'react';
-import Split from 'react-split';
-import './App.css';
+import React, { useEffect, useState, useCallback } from 'react';
+import './App.css'; // 上記のCSSをインポート
 
-function ControlPanel() {
-
-}
-
-
-function PlotViewerPanel() {
-
-}
-// https://github.com/nathancahill/split/tree/master/packages/splitjs#sizes
 const App = () => {
-  return (
-    <div className="App">
-      <Split
-        sizes={[50, 50]}
-        minSize={100}
-        expandToMin={false}
-        gutterSize={10}
-        gutterAlign="center"
-        snapOffset={30}
-        dragInterval={1}
-        direction="horizontal"
-        cursor="col-resize"
-        className="split"
-      >
-        <div className="panel">左側のパネル</div>
-        <div className="panel">右側のパネル</div>
-      </Split>
-    </div>
+  return(
+    <div className="filled-area"></div>
   );
-}
+};
+//   const [clientWidth, setClientWidth] = useState(document.documentElement.clientWidth);
+//   const [clientHeight, setClientHeight] = useState(document.documentElement.clientHeight);
+//   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+//   const handleMouseMove = useCallback((event) => {
+//     setMousePosition({
+//       x: event.clientX,
+//       y: event.clientY,
+//     });
+//   }, []);
+
+//   const handleResize = useCallback(() => {
+//     setClientWidth(document.documentElement.clientWidth);
+//     setClientHeight(document.documentElement.clientHeight);
+//   }, []);
+
+//   useEffect(() => {
+//     window.addEventListener('resize', handleResize);
+
+//     // クリーンアップ関数
+//     return () => {
+//       window.removeEventListener('resize', handleResize);
+//     };
+//   }, [handleResize]);
+
+//   useEffect(() => {
+//     console.log('ウィンドウサイズが変更されました:', clientWidth, clientHeight);
+//     // ここにサイズ変更時に実行するロジックを記述
+//   }, [clientWidth, clientHeight]);
+
+//   const containerStyle = {
+//     width: `${clientWidth}px`,
+//     height: `${clientHeight}px`,
+//     backgroundColor: 'lightblue'
+//   };
+
+//   return (
+//     <div style={containerStyle} onMouseMove={handleMouseMove}>
+//       <p>描画可能範囲の幅: {clientWidth}px</p>
+//       <p>描画可能範囲の高さ: {clientHeight}px</p>
+//       <p>Mouse Position: ({mousePosition.x}, {mousePosition.y})</p>
+//     </div>
+//   );
+// };
 
 export default App;
+
+// export default App;
 
 // import React, { memo, useEffect, useState } from 'react';
 // import { Canvas } from '@react-three/fiber';

@@ -1,5 +1,49 @@
 /* App.css */
-.App {
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #303035;
+}
+
+.filled-area {
+  width: 200px;
+  height: 100px;
+  background-color: blue; /* 塗りつぶす色 */
+}
+/* * {
+  margin: 0px;
+  padding: 0px;
+} */
+/* .App {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.Split {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.Split > div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: auto;
+} */
+/* .App {
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -7,6 +51,7 @@
 
 .split {
   display: flex;
+  flex-direction: column;
   height: 100%;
 }
 
@@ -15,7 +60,7 @@
   border: 1px solid #ddd;
   padding: 10px;
   box-sizing: border-box;
-}
+} */
 
 /* .split {
   display: flex;
