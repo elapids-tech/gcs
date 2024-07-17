@@ -23,7 +23,7 @@ body,
   padding: 0px;
   background-color: #1c6ec0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .R2 {
