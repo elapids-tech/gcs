@@ -1,29 +1,38 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, memo } from 'react';
+import { Canvas } from '@react-three/fiber'
+import { Grid, Center, GizmoHelper, GizmoViewport, AccumulativeShadows, RandomizedLight, OrbitControls, Environment, useGLTF } from '@react-three/drei'
+import { useControls } from 'leva'
 import Split from "react-split";
 import './styles.css';
 
-function ControlPanel() {
-  return (
-    <div>
-      read プロジェクトファイル
-      スタートボタン
-      ストップボタン
-    </div>
-  );
-};
-
 const R1Left = () => {
+  // const gridSize = [10, 10];
+  const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
+
   return (
-    <div class='left' style={{ border: "1px solid red" }}>
-      <h1>Component A</h1>
-    </div>
+    <Canvas class='left' camera={{ position: [10, 12, 12], fov: 25 }}>
+      <group position={[0, -0.5, 0]}>
+        <Grid position={[0, -0.01, 0]} args={[10, 10]} {...gridConfig} />
+      </group>
+      <OrbitControls makeDefault enableDamping={false} />
+      <Environment preset="city" />
+      <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
+        <GizmoViewport axisColors={['#9d4b4b', '#2f7f4f', '#3b5b9d']} labelColor="white" />
+      </GizmoHelper>
+    </Canvas>
   );
 };
 
 const R1Right = () => {
+  const handleClickStart = () => {};
+  const handleClickStop = () => {};
   return (
     <div class='right' style={{ border: "1px solid red" }}>
       <h1>Component B</h1>
+      <div>
+        <button onClick={handleClickStart}>Start</button>
+        <button onClick={handleClickStop}>Stop</button>
+      </div>
     </div>
   );
 };
@@ -77,52 +86,3 @@ const App = () => {
 }
 
 export default App;
-
-
-// const App = () => {
-//   const [clientWidth, setClientWidth] = useState(document.documentElement.clientWidth);
-//   const [clientHeight, setClientHeight] = useState(document.documentElement.clientHeight);
-//   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-
-//   const handleMouseMove = useCallback((event) => {
-//     setMousePosition({
-//       x: event.clientX,
-//       y: event.clientY,
-//     });
-//   }, []);
-
-//   const handleResize = useCallback(() => {
-//     setClientWidth(document.documentElement.clientWidth);
-//     setClientHeight(document.documentElement.clientHeight);
-//   }, []);
-
-//   useEffect(() => {
-//     window.addEventListener('resize', handleResize);
-
-//     // クリーンアップ関数
-//     return () => {
-//       window.removeEventListener('resize', handleResize);
-//     };
-//   }, [handleResize]);
-
-//   useEffect(() => {
-//     console.log('ウィンドウサイズが変更されました:', clientWidth, clientHeight);
-//     // ここにサイズ変更時に実行するロジックを記述
-//   }, [clientWidth, clientHeight]);
-
-//   const containerStyle = {
-//     width: `${clientWidth}px`,
-//     height: `${clientHeight}px`,
-//     backgroundColor: 'lightblue'
-//   };
-
-//   return (
-//     <div style={containerStyle} onMouseMove={handleMouseMove}>
-//       <p>描画可能範囲の幅: {clientWidth}px</p>
-//       <p>描画可能範囲の高さ: {clientHeight}px</p>
-//       <p>Mouse Position: ({mousePosition.x}, {mousePosition.y})</p>
-//     </div>
-//   );
-// };
-
-// export default App;
