@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, memo } from 'react';
+import React, { useEffect, useState, useCallback, useRef, memo } from 'react';
+import * as THREE from "three";
 import { Canvas } from '@react-three/fiber'
 import { Grid, Center, GizmoHelper, GizmoViewport, AccumulativeShadows, RandomizedLight, OrbitControls, Environment, useGLTF } from '@react-three/drei'
 import { useControls } from 'leva'
@@ -8,11 +9,12 @@ import './styles.css';
 const R1Left = () => {
   // const gridSize = [10, 10];
   const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
+  THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
 
   return (
     <Canvas className='left' camera={{ position: [10, 12, 12], fov: 25 }}>
       <group position={[0, -0.5, 0]}>
-        <Grid position={[0, -0.01, 0]} args={[10, 10]} {...gridConfig} />
+        <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} args={[10, 10]} {...gridConfig} />
       </group>
       <OrbitControls makeDefault enableDamping={false} />
       <Environment preset="city" />
@@ -23,8 +25,10 @@ const R1Left = () => {
   );
 };
 
-const R1Right = () => {
+const R1Right: React.FC = () => {
   const [item, setItem] = useState(null);
+  const [filePath, setFilePath] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const readProject = () => {
     fetch('http://localhost:8000/items/1')
@@ -33,11 +37,17 @@ const R1Right = () => {
       .catch(error => console.error('Error fetching data:', error));
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      setFilePath(file.name); // ファイル名を取得
+    }
+  };
+
   const readCamPos = () => {
-    fetch('http://localhost:8000/items/1')
-    .then(response => response.json())
-    .then(data => setItem(data))
-    .catch(error => console.error('Error fetching data:', error));
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   const handleClickStart = () => {};
@@ -47,7 +57,17 @@ const R1Right = () => {
       <h1>Component B</h1>
       <div className='bottons-column'>
         <button onClick={readProject}>Read Project</button>
-        <button onClick={readCamPos}> Read Camera Position</button>
+        <button onClick={readCamPos}>Read Camera Position</button>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          style={{ display: 'none' }} 
+          onChange={handleFileChange} 
+          accept=".txt"
+        />
+        {filePath && (
+          <p>選択されたファイルのパス: {filePath}</p>
+        )}
         <button onClick={handleClickStart}>Start</button>
         <button onClick={handleClickStop}>Stop</button>
       </div>
