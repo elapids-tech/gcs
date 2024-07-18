@@ -4,10 +4,16 @@ import json
 import os
 from typing import List
 from typing import Dict
-# from pydantic import BaseModel
-
 import radio
 
+class Project:
+    def __init__(self) -> None:
+        pass
+
+    def set_project(file_path):
+        pass
+
+proj = Project()
 app = FastAPI()
 wifi = radio.Wifi(drone_ip="192.168.0.2", port=5000)
 
@@ -26,6 +32,11 @@ async def get_data():
     with open(file_path, 'r') as file:
         data = json.load(file)
     return data
+
+@app.get("setproject/{file_path}")
+async def set_project(file_path):
+    proj.set_project(file_path)
+
 
 @app.post("/start")
 def start():
