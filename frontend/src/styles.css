@@ -47,6 +47,13 @@ body,
   box-sizing: border-box;
 }
 
+.bottons-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  width: fit-content;
+}
+
 /* * {
   margin: 0px;
   padding: 0px;
