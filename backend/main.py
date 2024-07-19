@@ -1,17 +1,23 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import os
 from typing import List
 from typing import Dict
 import radio
+import shutil
 
 class Project:
+    camPos = {}
+
     def __init__(self) -> None:
         pass
 
     def set_project(file_path):
         pass
+
+    def set_cam_pos(file_path):
+        print(file_path)
 
 proj = Project()
 app = FastAPI()
@@ -37,6 +43,47 @@ async def get_data():
 async def set_project(file_path):
     proj.set_project(file_path)
 
+@app.post("setcampos/{file_path}")
+async def set_cam_pos(file_path:str):
+    proj.set_cam_pos(file_path)
+
+
+@app.post("/upload/")
+async def upload_file(request: Request):
+    body = await request.body()
+    text = body.decode('utf-8') 
+
+    lines = text.splitlines()
+
+    for i, line in enumerate(lines):
+        print(line)
+        # Project.camPos = {'{i}':}
+        # if count == 20:
+        #     stripped_line = line.strip()
+        #     if stripped_line != "None":
+        #         float_list = [float(value) for value in stripped_line.split(',')]
+        #         result.append(float_list)
+        #         count = 0
+        # else:
+        #     count += 1
+
+    # for i in range(len(result)):
+    #     cx = result[i][0]
+    #     cy = result[i][2]
+    #     cz = -result[i][1]
+
+    #     v_xx = result[i][3]
+    #     v_xy = result[i][5]
+    #     v_xz = -result[i][4]
+
+    #     v_yx = result[i][6]
+    #     v_yy = result[i][8]
+    #     v_yz = -result[i][7]
+
+    #     v_zx = result[i][9]
+    #     v_zy = result[i][11]
+    #     v_zz = -result[i][10]
+    return {"received_content": body.decode('utf-8')}
 
 @app.post("/start")
 def start():

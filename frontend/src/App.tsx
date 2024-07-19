@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback, useRef, memo } from 'react';
 import * as THREE from "three";
 import { Canvas } from '@react-three/fiber'
-import { Grid, Center, GizmoHelper, GizmoViewport, AccumulativeShadows, RandomizedLight, OrbitControls, Environment, useGLTF } from '@react-three/drei'
+import { Grid, Line, Center, GizmoHelper, GizmoViewport, AccumulativeShadows, RandomizedLight, OrbitControls, Environment, useGLTF } from '@react-three/drei'
 import { useControls } from 'leva'
 import Split from "react-split";
 import './styles.css';
+import axios from 'axios';
 
 const R1Left = () => {
   // const gridSize = [10, 10];
@@ -15,6 +16,13 @@ const R1Left = () => {
     <Canvas className='left' camera={{ position: [10, 12, 12], fov: 25 }}>
       <group position={[0, -0.5, 0]}>
         <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} args={[10, 10]} {...gridConfig} />
+        <Line
+          points={[[0, 0, 0], [10, 10, 10]]}       // Array of points, Array<Vector3 | Vector2 | [number, number, number] | [number, number] | number>
+          color="white"                   // Default
+          lineWidth={5}                   // In pixels (default)
+          segments                        // If true, renders a THREE.LineSegments2. Otherwise, renders a THREE.Line2
+          dashed={false}                  // Default
+        />
       </group>
       <OrbitControls makeDefault enableDamping={false} />
       <Environment preset="city" />
@@ -26,21 +34,26 @@ const R1Left = () => {
 };
 
 const R1Right: React.FC = () => {
-  const [item, setItem] = useState(null);
-  const [filePath, setFilePath] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const readProject = () => {
-    fetch('http://localhost:8000/items/1')
-      .then(response => response.json())
-      .then(data => setItem(data))
-      .catch(error => console.error('Error fetching data:', error));
-  };
+  const [filePath, setFilePath] = useState('');
+  const [fileContent, setFileContent] = useState('');
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
-      setFilePath(file.name); // ファイル名を取得
+      const text = await file.text();
+      setFilePath(file.name);
+      setFileContent(text);
+
+      // ファイル読み込みが完了した後にfetchを呼び出す
+      const response = await fetch('http://localhost:8000/upload/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: text,
+      });
+
+      const result = await response.json();
+      console.log(result);
     }
   };
 
@@ -52,11 +65,11 @@ const R1Right: React.FC = () => {
 
   const handleClickStart = () => {};
   const handleClickStop = () => {};
+
   return (
     <div className='right' style={{ border: "1px solid red" }}>
       <h1>Component B</h1>
       <div className='bottons-column'>
-        <button onClick={readProject}>Read Project</button>
         <button onClick={readCamPos}>Read Camera Position</button>
         <input 
           type="file" 
@@ -65,9 +78,8 @@ const R1Right: React.FC = () => {
           onChange={handleFileChange} 
           accept=".txt"
         />
-        {filePath && (
-          <p>選択されたファイルのパス: {filePath}</p>
-        )}
+        <p>選択されたファイルのパス:</p>
+        <p>{filePath}</p>
         <button onClick={handleClickStart}>Start</button>
         <button onClick={handleClickStop}>Stop</button>
       </div>
