@@ -6,6 +6,7 @@ import { useControls } from 'leva'
 import Split from "react-split";
 import './styles.css';
 import axios from 'axios';
+import ApexCharts from 'react-apexcharts';
 
 const R1Left = () => {
   // const gridSize = [10, 10];
@@ -109,13 +110,62 @@ function R1() {
   );
 }
 
-function R2() {
-  return(
-    <div className="R2">
-      <p>R2</p>
+const R2: React.FC = () => {
+  const [series, setSeries] = useState([{ data: [] as number[] }]);
+  const [time, setTime] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTime((prevTime) => prevTime + 0.1);
+      setSeries((prevSeries) => {
+        const newData = [...prevSeries[0].data, Math.sin(time / 10)];
+        if (newData.length > 30) newData.shift(); // 30ポイント以上のデータがある場合、古いデータを削除
+        return [{ data: newData }];
+      });
+    }, 1000); // 1秒ごとにデータを更新
+
+    return () => clearInterval(interval);
+  }, [time]);
+
+  const options: ApexCharts.ApexOptions = {
+    chart: {
+      id: 'realtime',
+      animations: {
+        enabled: true,
+        easing: 'linear', // 'linear'はApexChartsが受け入れる型の一つです
+        dynamicAnimation: {
+          speed: 1000,
+        },
+      },
+      toolbar: {
+        show: false,
+      },
+      zoom: {
+        enabled: false,
+      },
+    },
+    xaxis: {
+      type: 'numeric',
+      range: 30,
+    },
+    yaxis: {
+      max: 1,
+      min: -1,
+    },
+  };
+
+  return (
+    <div>
+      <ApexCharts
+        options={options}
+        series={series}
+        type="line"
+        width="100%"
+        height="400"
+      />
     </div>
   );
-}
+};
 
 const App = () => {
   return(
