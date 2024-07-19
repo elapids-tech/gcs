@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules/*
+!/node_modules/do_nothing.txt
 /.pnp
 .pnp.js
 
