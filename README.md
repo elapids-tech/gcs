@@ -1,5 +1,8 @@
 # IndoorDroneLightShow-Configurator
 
+## 開発環境構築
+- /frontend/node_modules/ これを作成
+
 ## frontend
 - ビルドし直す場合　node_modulesごと消さないといけない。
 
