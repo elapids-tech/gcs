@@ -1,11 +1,14 @@
-from fastapi import FastAPI, Request, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
 import json
 import os
+import shutil
+import signal
+import time
+import socket
+import threading
+from fastapi import FastAPI, Request, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from typing import Dict
-import radio
-import shutil
 
 class Project:
     camPos = {}
@@ -19,9 +22,52 @@ class Project:
     def set_cam_pos(file_path):
         print(file_path)
 
-proj = Project()
+
+class DroneControl:
+    def __init__(self) -> None:
+        # drone state -> return ping, telemetry
+        # (drone_ip="192.168.0.2", port=5000)
+        self.send_messages = []
+        self.drone_state = 0
+        # signal.signal(signal.SIGALRM, self.routine)
+        # signal.setitimer(signal.ITIMER_REAL, 1, 1)
+        self.drone_ip = "192.168.0.2"
+        self.port = 5000
+        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_socket.connect((self.drone_ip, self.port))
+        self.send_routine = True
+        time.sleep(1)
+        if self.udp_socket is None:
+
+
+    def udp_send(self, data: Dict[str, float]):
+        if self.udp_socket is None:
+            raise ValueError("UDP socket is not set up. Call udp_setup() first.")
+
+        json_data = json.dumps(data)
+        self.udp_socket.sendall(json_data.encode('utf-8'))
+
+    def routine(self):
+        while self.send_routine:
+            ut = time.time()
+            data = {'time':ut, 'state':self.drone_state }
+            print('send data: ', data)
+            self.udp_send(data)
+            time.sleep(0.1)
+
+    def send():
+        pass
+
+    def running():
+        pass
+
+    def sleep():
+        pass
+
 app = FastAPI()
-wifi = radio.Wifi(drone_ip="192.168.0.2", port=5000)
+
+proj = Project()
+drone_control = DroneControl()
 
 # CORS設定
 app.add_middleware(
@@ -111,12 +157,12 @@ def disarm():
 #     y: float
 #     z: float
 
-@app.post("/pos_send")
-async def pos_send(pos: Dict[str, float]):
-    print(type(pos))
-    print(pos)
-    wifi.udp_send(pos)
-    # return {"received_data": pos}
+# @app.post("/pos_send")
+# async def pos_send(pos: Dict[str, float]):
+#     print(type(pos))
+#     print(pos)
+#     wifi.udp_send(pos)
+#     # return {"received_data": pos}
 
 
 @app.get("/read_project")

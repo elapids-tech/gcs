@@ -14,7 +14,7 @@ const R1Left = () => {
   THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
 
   return (
-    <Canvas className='left' camera={{ position: [10, 12, 12], fov: 25 }}>
+    <Canvas className='left' camera={{ position: [10, 12, 12], fov: 25 }} style={{ border: "1px solid red" }}>
       <group position={[0, -0.5, 0]}>
         <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} args={[10, 10]} {...gridConfig} />
         <Line
@@ -38,6 +38,8 @@ const R1Right: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filePath, setFilePath] = useState('');
   const [fileContent, setFileContent] = useState('');
+  const containerRef = useRef(null);
+  const [containerHeight, setContainerHeight] = useState(0);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -67,22 +69,46 @@ const R1Right: React.FC = () => {
   const handleClickStart = () => {};
   const handleClickStop = () => {};
 
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        if (entry.target === containerRef.current) {
+          setContainerHeight(entry.contentRect.height);
+        }
+      }
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      if (containerRef.current) {
+        resizeObserver.unobserve(containerRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <div className='right' style={{ border: "1px solid red" }}>
-      <h1>Component B</h1>
-      <div className='bottons-column'>
-        <button onClick={readCamPos}>Read Camera Position</button>
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          style={{ display: 'none' }} 
-          onChange={handleFileChange} 
-          accept=".txt"
-        />
-        <p>選択されたファイルのパス:</p>
-        <p>{filePath}</p>
-        <button onClick={handleClickStart}>Start</button>
-        <button onClick={handleClickStop}>Stop</button>
+    <div className='right' style={{ border: "1px solid red",height: '100%', overflowY: 'auto'}}>
+      <div style={{ minHeight: containerHeight + 100 }}>
+        <h1>Component B</h1>
+        <div className='bottons-column'>
+          <button onClick={readCamPos}>Read Camera Position</button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            style={{ display: 'none' }} 
+            onChange={handleFileChange} 
+            accept=".txt"
+          />
+          <p>選択されたファイルのパス:</p>
+          <p>{filePath}</p>
+
+          <button onClick={handleClickStart}>Start</button>
+          <button onClick={handleClickStop}>Stop</button>
+
+        </div>
       </div>
     </div>
   );
@@ -155,7 +181,7 @@ const R2: React.FC = () => {
   };
 
   return (
-    <div>
+    <div style={{ border: "1px solid red" }}>
       <ApexCharts
         options={options}
         series={series}
