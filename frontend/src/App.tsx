@@ -18,11 +18,11 @@ const R1Left = () => {
       <group position={[0, -0.5, 0]}>
         <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} args={[10, 10]} {...gridConfig} />
         <Line
-          points={[[0, 0, 0], [10, 10, 10]]}       // Array of points, Array<Vector3 | Vector2 | [number, number, number] | [number, number] | number>
-          color="white"                   // Default
-          lineWidth={5}                   // In pixels (default)
-          segments                        // If true, renders a THREE.LineSegments2. Otherwise, renders a THREE.Line2
-          dashed={false}                  // Default
+          points={[[0, 0, 0], [10, 10, 10]]}  // Array of points, Array<Vector3 | Vector2 | [number, number, number] | [number, number] | number>
+          color="white"                       // Default
+          lineWidth={5}                       // In pixels (default)
+          segments                            // If true, renders a THREE.LineSegments2. Otherwise, renders a THREE.Line2
+          dashed={false}                      // Default
         />
       </group>
       <OrbitControls makeDefault enableDamping={false} />
@@ -90,7 +90,7 @@ const R1Right: React.FC = () => {
   }, []);
 
   return (
-    <div className='right' style={{ border: "1px solid red",height: '100%', overflowY: 'auto'}}>
+    <div className='right' style={{ border: "1px solid red", height: '100%', overflowY: 'auto'}}>
       <div style={{ minHeight: containerHeight + 100 }}>
         <h1>Component B</h1>
         <div className='bottons-column'>
@@ -181,7 +181,7 @@ const R2: React.FC = () => {
   };
 
   return (
-    <div style={{ border: "1px solid red" }}>
+    <div className='chart' style={{ border: "1px solid red", height: '100%', overflowY: 'auto' }}>
       <ApexCharts
         options={options}
         series={series}
