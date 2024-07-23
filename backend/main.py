@@ -82,9 +82,9 @@ class DroneControl:
 
 
 app = FastAPI()
-
 proj = Project()
-drone_control = DroneControl(interval=5, host='192.168.0.2', port=5000)
+
+drone_control = DroneControl(interval=5, host='drone', port=5000)
 drone_control.start()
 
 
