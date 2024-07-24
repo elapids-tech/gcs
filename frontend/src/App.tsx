@@ -66,8 +66,23 @@ const R1Right: React.FC = () => {
     }
   };
 
-  const handleClickStart = () => {};
-  const handleClickStop = () => {};
+  const handleClickStart = () => {
+    fetch('http://localhost:8000/start', {
+      method: 'POST',
+    })
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+  };
+
+  const handleClickStop = () => {
+    fetch('http://localhost:8000/stop', {
+      method: 'POST',
+    })
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+  };
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(entries => {

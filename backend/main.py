@@ -82,13 +82,6 @@ class DroneControl:
 
 
 app = FastAPI()
-proj = Project()
-
-drone_control = DroneControl(interval=5, host='drone', port=5000)
-drone_control.start()
-
-
-# CORS設定
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],  # Reactアプリが動作するポートを指定
@@ -96,6 +89,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+proj = Project()
+
+drone_control = DroneControl(interval=0.5, host='drone', port=5000)
+drone_control.start()
+
+@app.post("/start")
+def start():
+    print('start pressed')
+    drone_control.set_drone_state(1)
+    print(f'drone_state:{drone_control.drone_state}')
+    return {"status": f"{drone_control.drone_state}"}
+
+@app.post("/stop")
+def stop():
+    print('stop pressed')
+    drone_control.set_drone_state(0)
+    print(f'drone_state:{drone_control.drone_state}')
+    return {"status": f"{drone_control.drone_state}"}
 
 @app.get("/data")
 async def get_data():
@@ -111,7 +123,6 @@ async def set_project(file_path):
 @app.post("setcampos/{file_path}")
 async def set_cam_pos(file_path:str):
     proj.set_cam_pos(file_path)
-
 
 @app.post("/upload/")
 async def upload_file(request: Request):
@@ -150,27 +161,6 @@ async def upload_file(request: Request):
     #     v_zz = -result[i][10]
     return {"received_content": body.decode('utf-8')}
 
-@app.post("/start")
-def start():
-    print('start')
-    return {"status": "started"}
-
-@app.post("/pause")
-def pause():
-    print('pause')
-    return {"status": "paused"}
-
-@app.post("/exit")
-def exit():
-    print('exit')
-    return {"status": "exited"}
-
-@app.post("/disarm")
-def disarm():
-    print('disarm')
-    return {"status": "disarmed"}
-
-
 # class Position(BaseModel):
 #     x: float
 #     y: float
@@ -182,8 +172,3 @@ def disarm():
 #     print(pos)
 #     wifi.udp_send(pos)
 #     # return {"received_data": pos}
-
-
-@app.get("/read_project")
-async def read_project():
-    return {"message": "Project data"}
