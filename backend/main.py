@@ -91,7 +91,7 @@ app.add_middleware(
 
 proj = Project()
 
-drone_control = DroneControl(interval=0.1, host='drone', port=5000)
+drone_control = DroneControl(interval=0.1, host='192.168.0.5', port=5000)
 drone_control.start()
 
 @app.post("/start")
