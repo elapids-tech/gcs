@@ -62,7 +62,6 @@ class DroneControl:
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                     json_data = json.dumps(send_data)
                     sock.sendto(json_data.encode('utf-8'), (self.host, self.port))
-                    print(f"Sent: {send_data}")
             except Exception as e:
                 print(f"Error sending data: {e}")
             time.sleep(self.interval)
@@ -92,7 +91,7 @@ app.add_middleware(
 
 proj = Project()
 
-drone_control = DroneControl(interval=0.5, host='drone', port=5000)
+drone_control = DroneControl(interval=0.1, host='drone', port=5000)
 drone_control.start()
 
 @app.post("/start")
