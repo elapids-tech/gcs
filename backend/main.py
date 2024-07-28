@@ -12,7 +12,8 @@ from typing import Dict
 
 
 class Project:
-    camPos = {}
+    landmarks = {}
+    drone_pos = {}
 
     def __init__(self) -> None:
         pass
@@ -91,8 +92,22 @@ app.add_middleware(
 
 proj = Project()
 
-drone_control = DroneControl(interval=0.1, host='192.168.0.5', port=5000)
+drone_control = DroneControl(interval=1, host='192.168.0.5', port=5000)
 drone_control.start()
+
+@app.post("/upload/")
+async def upload_file(request: Request):
+    body = await request.body()
+    json_data = body.decode('utf-8')
+
+    # json.loadsを使用して文字列から辞書に変換
+    data = json.loads(json_data)
+
+    # keyの一覧を表示
+    for i in data:
+        print(i)
+    
+    return {"received_content": json_data}
 
 @app.post("/start")
 def start():
@@ -123,51 +138,3 @@ async def set_project(file_path):
 async def set_cam_pos(file_path:str):
     proj.set_cam_pos(file_path)
 
-@app.post("/upload/")
-async def upload_file(request: Request):
-    body = await request.body()
-    text = body.decode('utf-8') 
-
-    lines = text.splitlines()
-
-    for i, line in enumerate(lines):
-        print(line)
-        # Project.camPos = {'{i}':}
-        # if count == 20:
-        #     stripped_line = line.strip()
-        #     if stripped_line != "None":
-        #         float_list = [float(value) for value in stripped_line.split(',')]
-        #         result.append(float_list)
-        #         count = 0
-        # else:
-        #     count += 1
-
-    # for i in range(len(result)):
-    #     cx = result[i][0]
-    #     cy = result[i][2]
-    #     cz = -result[i][1]
-
-    #     v_xx = result[i][3]
-    #     v_xy = result[i][5]
-    #     v_xz = -result[i][4]
-
-    #     v_yx = result[i][6]
-    #     v_yy = result[i][8]
-    #     v_yz = -result[i][7]
-
-    #     v_zx = result[i][9]
-    #     v_zy = result[i][11]
-    #     v_zz = -result[i][10]
-    return {"received_content": body.decode('utf-8')}
-
-# class Position(BaseModel):
-#     x: float
-#     y: float
-#     z: float
-
-# @app.post("/pos_send")
-# async def pos_send(pos: Dict[str, float]):
-#     print(type(pos))
-#     print(pos)
-#     wifi.udp_send(pos)
-#     # return {"received_data": pos}

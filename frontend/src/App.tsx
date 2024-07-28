@@ -24,6 +24,29 @@ const R1Left = () => {
           segments                            // If true, renders a THREE.LineSegments2. Otherwise, renders a THREE.Line2
           dashed={false}                      // Default
         />
+
+
+        <Line
+          points={[[0.871116,-1.26046,0.0277326], 
+                   [0.873161,-1.2583,0.22771]]}
+          color="red" 
+          lineWidth={2}  
+          segments
+        />
+        <Line
+          points={[[0.871116,-1.26046,0.0277326], 
+                   [1.05626,-1.18487,0.0250218]]}
+          color="red" 
+          lineWidth={2}  
+          segments
+        />
+        <Line
+          points={[[0.871116,-1.26046,0.0277326], 
+                   [0.795502,-1.07531,0.0265044]]}
+          color="red" 
+          lineWidth={2}  
+          segments
+        />
       </group>
       <OrbitControls makeDefault enableDamping={false} />
       <Environment preset="city" />
@@ -60,7 +83,7 @@ const R1Right: React.FC = () => {
     }
   };
 
-  const readCamPos = () => {
+  const LoadProject = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
@@ -109,13 +132,13 @@ const R1Right: React.FC = () => {
       <div style={{ minHeight: containerHeight + 100 }}>
         <h1>Component B</h1>
         <div className='bottons-column'>
-          <button onClick={readCamPos}>Read Camera Position</button>
+          <button onClick={LoadProject}>Load Project</button>
           <input 
             type="file" 
             ref={fileInputRef} 
             style={{ display: 'none' }} 
             onChange={handleFileChange} 
-            accept=".txt"
+            accept=".json"
           />
           <p>選択されたファイルのパス:</p>
           <p>{filePath}</p>
