@@ -1,49 +1,80 @@
 import React, { useEffect, useState, useCallback, useRef, memo } from 'react';
 import * as THREE from "three";
 import { Canvas } from '@react-three/fiber'
-import { Grid, Line, Center, GizmoHelper, GizmoViewport, AccumulativeShadows, RandomizedLight, OrbitControls, Environment, useGLTF } from '@react-three/drei'
-import { useControls } from 'leva'
+import { Grid, Line, GizmoHelper, GizmoViewport, OrbitControls, Environment, Sphere, Box } from '@react-three/drei'
 import Split from "react-split";
 import './styles.css';
-import axios from 'axios';
 import ApexCharts from 'react-apexcharts';
 
-const R1Left = () => {
-  // const gridSize = [10, 10];
-  const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
-  THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
 
+type Coordinates = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+const R1Left = () => {
+  const [coordinates, setCoordinates] = useState<Coordinates>({ x: 0, y: 0, z: 0 });
+  const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
+
+  useEffect(() => {
+    // 初期座標をHTTPリクエストで取得
+    fetch('http://localhost:8000/coordinates')
+      .then(response => response.json())
+      .then(data => setCoordinates(data))
+      .catch(error => console.error('Error fetching coordinates:', error));
+
+    const ws = new WebSocket('ws://localhost:8000/ws');
+
+    ws.onmessage = (event) => {
+      const data: Coordinates = JSON.parse(event.data);
+      setCoordinates(data);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, []);
+
+  THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
   return (
     <Canvas className='left' camera={{ position: [10, 12, 12], fov: 25 }} style={{ border: "1px solid red" }}>
       <group position={[0, -0.5, 0]}>
-        <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} args={[10, 10]} {...gridConfig} />
-        <Line
-          points={[[0, 0, 0], [10, 10, 10]]}  // Array of points, Array<Vector3 | Vector2 | [number, number, number] | [number, number] | number>
-          color="white"                       // Default
-          lineWidth={5}                       // In pixels (default)
-          segments                            // If true, renders a THREE.LineSegments2. Otherwise, renders a THREE.Line2
-          dashed={false}                      // Default
-        />
+        <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} args={[10, 10]} {...gridConfig} />  
+        <Line points={[[0, 0, 0], [1, 0, 0]]} color="red" lineWidth={3} segments/>
+        <Line points={[[0, 0, 0], [0, 1, 0]]} color="green" lineWidth={3} segments/>
+        <Line points={[[0, 0, 0], [0, 0, 1]]} color="blue" lineWidth={3} segments/>
 
+        <Sphere args={[0.1, 32, 32]} position={[0, 0, 0]}>
+          <meshStandardMaterial attach="material" color="blue" />
+        </Sphere>
+
+        <Sphere args={[0.5, 32, 32]} position={[coordinates.x, coordinates.y, coordinates.z]}>
+          <meshStandardMaterial attach="material" color="orange" />
+        </Sphere>
 
         <Line
-          points={[[0.871116,-1.26046,0.0277326], 
-                   [0.873161,-1.2583,0.22771]]}
+          points={[[0.871116,1.26046,0.0277326], 
+                   [0.873161,1.2583,0.22771]]}
           color="red" 
           lineWidth={2}  
           segments
         />
         <Line
-          points={[[0.871116,-1.26046,0.0277326], 
-                   [1.05626,-1.18487,0.0250218]]}
-          color="red" 
+          points={[[0.871116,1.26046,0.0277326], 
+                   [1.05626,1.18487,0.0250218]]}
+          color="green" 
           lineWidth={2}  
           segments
         />
         <Line
-          points={[[0.871116,-1.26046,0.0277326], 
-                   [0.795502,-1.07531,0.0265044]]}
-          color="red" 
+          points={[[0.871116,1.26046,0.0277326], 
+                   [0.795502,1.07531,0.0265044]]}
+          color="blue" 
           lineWidth={2}  
           segments
         />

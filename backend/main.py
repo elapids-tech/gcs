@@ -1,28 +1,80 @@
 import json
 import os
-import shutil
-import signal
 import time
 import socket
 import threading
-from fastapi import FastAPI, Request, File, UploadFile
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from typing import Dict
 
 
-class Project:
-    landmarks = {}
-    drone_pos = {}
+from pydantic import BaseModel
+import asyncio
 
-    def __init__(self) -> None:
-        pass
 
-    def set_project(file_path):
-        pass
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    def set_cam_pos(file_path):
-        print(file_path)
+
+from fastapi import FastAPI, WebSocket
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+coordinates = {"x": 0, "y": 0, "z": 0}
+
+@app.get("/coordinates")
+async def get_coordinates():
+    return JSONResponse(content=coordinates)
+
+@app.post("/coordinates")
+async def set_coordinates(request: Request):
+    global coordinates
+    new_coordinates = await request.json()
+    coordinates = new_coordinates
+    return JSONResponse(content=coordinates)
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            await asyncio.sleep(1)  # 1秒ごとに更新
+            # 座標を更新する関数呼び出し
+            update_coordinates()
+            await websocket.send_json(coordinates)
+    except Exception as e:
+        print(f"Connection closed: {e}")
+    finally:
+        await websocket.close()
+
+def update_coordinates():
+    global coordinates
+    if coordinates['x'] == 10:
+        coordinates['x'] = 0
+        coordinates['y'] = 0
+        coordinates['z'] = 0
+    else:
+        coordinates['x'] += 1
+        coordinates['y'] += 1
+        coordinates['z'] += 1
+
 
 
 class DroneControl:
@@ -81,17 +133,6 @@ class DroneControl:
                     print(f"Error receiving data: {e}")
 
 
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Reactアプリが動作するポートを指定
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-proj = Project()
-
 drone_control = DroneControl(interval=1, host='192.168.0.5', port=5000)
 drone_control.start()
 
@@ -130,11 +171,11 @@ async def get_data():
         data = json.load(file)
     return data
 
-@app.get("setproject/{file_path}")
-async def set_project(file_path):
-    proj.set_project(file_path)
+# @app.get("setproject/{file_path}")
+# async def set_project(file_path):
+#     project.set_project(file_path)
 
-@app.post("setcampos/{file_path}")
-async def set_cam_pos(file_path:str):
-    proj.set_cam_pos(file_path)
+# @app.post("setcampos/{file_path}")
+# async def set_cam_pos(file_path:str):
+#     project.set_cam_pos(file_path)
 
