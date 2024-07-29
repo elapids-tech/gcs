@@ -6,15 +6,44 @@ import Split from "react-split";
 import './styles.css';
 import ApexCharts from 'react-apexcharts';
 
-
 type Coordinates = {
   x: number;
   y: number;
   z: number;
 };
 
+
+type LandmarksAxis = {
+  marker_center_x: number;
+  marker_center_y: number;
+  marker_center_z: number;
+  
+  marker_vec_x_x: number;
+  marker_vec_x_y: number;
+  marker_vec_x_z: number;
+  
+  marker_vec_y_x: number;
+  marker_vec_y_y: number;
+  marker_vec_y_z: number;
+  
+  marker_vec_z_x: number;
+  marker_vec_z_y: number;
+  marker_vec_z_z: number;
+
+  marker_ids: number;
+}
+
+type LandmarksCorners = {
+  x: number;
+  y: number;
+  z: number;
+  ids: number;
+};
+
+
 const R1Left = () => {
   const [coordinates, setCoordinates] = useState<Coordinates>({ x: 0, y: 0, z: 0 });
+  const [landmarks, setLandmarks] = useState<LandmarksCorners>({ x: 0, y: 0, z: 0, ids:0});
   const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
 
   useEffect(() => {
