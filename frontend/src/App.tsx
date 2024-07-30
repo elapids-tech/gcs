@@ -6,31 +6,6 @@ import Split from "react-split";
 import './styles.css';
 import ApexCharts from 'react-apexcharts';
 
-type Coordinates = {
-  x: number;
-  y: number;
-  z: number;
-};
-
-type LandmarksAxis = {
-  marker_center_x: number;
-  marker_center_y: number;
-  marker_center_z: number;
-  
-  marker_vec_x_x: number;
-  marker_vec_x_y: number;
-  marker_vec_x_z: number;
-  
-  marker_vec_y_x: number;
-  marker_vec_y_y: number;
-  marker_vec_y_z: number;
-  
-  marker_vec_z_x: number;
-  marker_vec_z_y: number;
-  marker_vec_z_z: number;
-
-  marker_ids: number;
-}
 
 type LandmarksCorners = {
   id:string;
@@ -41,7 +16,6 @@ type LandmarksCorners = {
 
 
 const R1Left = () => {
-  const [coordinates, setCoordinates] = useState<Coordinates>({ x: 0, y: 0, z: 0 });
   const [landmarksCorners, setLandmarksCorners] = useState<LandmarksCorners[]>([]);
   const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
 
@@ -51,8 +25,8 @@ const R1Left = () => {
   
     // received message
     ws.onmessage = (event) => {
-      const data: LandmarksCorners = JSON.parse(event.data);
-      setCoordinates(data);
+      const data: LandmarksCorners[] = JSON.parse(event.data);
+      setLandmarksCorners(data);
     };
   
     ws.onclose = () => {
@@ -67,7 +41,7 @@ const R1Left = () => {
   THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
   return (
     <Canvas className='left' camera={{ position: [10, 12, 12], fov: 25 }} style={{ border: "1px solid red" }}>
-      <group position={[0, -0.5, 0]}>
+      <group position={[0, 0, 0]}>
         <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} args={[10, 10]} {...gridConfig} />  
         <Line points={[[0, 0, 0], [1, 0, 0]]} color="red" lineWidth={3} segments/>
         <Line points={[[0, 0, 0], [0, 1, 0]]} color="green" lineWidth={3} segments/>
@@ -77,9 +51,11 @@ const R1Left = () => {
           <meshStandardMaterial attach="material" color="blue" />
         </Sphere>
 
-        <Sphere args={[0.5, 32, 32]} position={[coordinates.x, coordinates.y, coordinates.z]}>
+        {landmarksCorners.map((corner) => (
+        <Sphere args={[0.03, 32, 32]} position={[corner.x, corner.y, corner.z]}>
           <meshStandardMaterial attach="material" color="orange" />
         </Sphere>
+        ))}
 
         <Line
           points={[[0.871116,1.26046,0.0277326], 

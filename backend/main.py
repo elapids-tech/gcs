@@ -10,6 +10,24 @@ from typing import Dict
 
 from drone_controller import DroneController
 
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
 class ProjectManager:
     def __init__(self) -> None:
         self.last_update = time.time()
@@ -34,6 +52,7 @@ class ProjectManager:
 drone_controller = DroneController(interval=1, host='192.168.0.5', port=5000)
 drone_controller.start()
 
+manager = ConnectionManager()
 project = ProjectManager()
 
 app = FastAPI()
@@ -47,29 +66,12 @@ app.add_middleware(
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
+    await manager.connect(websocket)
     try:
         while True:
-            await asyncio.sleep(1)  
-            # 座標を更新する関数呼び出し
-            project.update_coordinates()
-            coordinates = project.get_coordinates()
-            await websocket.send_json(coordinates)
-    except Exception as e:
-        print(f"Connection closed: {e}")
-    finally:
-        await websocket.close()
-
-@app.get("/coordinates")
-async def get_coordinates():
-    return JSONResponse(content=project.get_coordinates())
-
-# @app.post("/coordinates")
-# async def set_coordinates(request: Request):
-#     global coordinates
-#     new_coordinates = await request.json()
-#     coordinates = new_coordinates
-#     return JSONResponse(content=coordinates)
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 @app.post("/upload/")
 async def upload_file(request: Request):
@@ -78,10 +80,14 @@ async def upload_file(request: Request):
 
     data = json.loads(json_data)
 
+    project.landmarks_corners.clear()
+
     for marker_id in data['landmarks']:
-        for i, corner in enumerate(marker_id['corners']):
-            id = int(marker_id + str(i))
-            project.landmarks_corners.append({"id": id, "x": 0, "y": 0, "z": 0})
+        for i, pos in enumerate(data['landmarks'][marker_id]['corners']):
+            id = str(marker_id) + str(i)
+            project.landmarks_corners.append({"id":id, "x":pos[0], "y":pos[1], "z":pos[2]})
+
+    await manager.broadcast(json.dumps(project.landmarks_corners))
 
     return {"state_message": 0}
 
