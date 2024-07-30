@@ -46,22 +46,19 @@ const R1Left = () => {
   const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
 
   useEffect(() => {
-    fetch('http://localhost:8000/coordinates')
-      .then(response => response.json())
-      .then(data => setCoordinates(data))
-      .catch(error => console.error('Error fetching coordinates:', error));
-
+    // create websocket
     const ws = new WebSocket('ws://localhost:8000/ws');
-
+  
+    // received message
     ws.onmessage = (event) => {
       const data: LandmarksCorners = JSON.parse(event.data);
       setCoordinates(data);
     };
-
+  
     ws.onclose = () => {
       console.log('WebSocket connection closed');
     };
-
+  
     return () => {
       ws.close();
     };
