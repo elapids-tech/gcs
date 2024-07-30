@@ -37,13 +37,12 @@ type LandmarksCorners = {
   x: number;
   y: number;
   z: number;
-  ids: number;
 };
 
 
 const R1Left = () => {
   const [coordinates, setCoordinates] = useState<Coordinates>({ x: 0, y: 0, z: 0 });
-  const [landmarks, setLandmarks] = useState<LandmarksCorners>({ x: 0, y: 0, z: 0, ids:0});
+  const [landmarks, setLandmarks] = useState<LandmarksCorners>({ x: 0, y: 0, z: 0 });
   const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
 
   useEffect(() => {
@@ -56,7 +55,7 @@ const R1Left = () => {
     const ws = new WebSocket('ws://localhost:8000/ws');
 
     ws.onmessage = (event) => {
-      const data: Coordinates = JSON.parse(event.data);
+      const data: LandmarksCorners = JSON.parse(event.data);
       setCoordinates(data);
     };
 
