@@ -12,7 +12,6 @@ type Coordinates = {
   z: number;
 };
 
-
 type LandmarksAxis = {
   marker_center_x: number;
   marker_center_y: number;
@@ -34,6 +33,7 @@ type LandmarksAxis = {
 }
 
 type LandmarksCorners = {
+  id:string;
   x: number;
   y: number;
   z: number;
@@ -42,11 +42,10 @@ type LandmarksCorners = {
 
 const R1Left = () => {
   const [coordinates, setCoordinates] = useState<Coordinates>({ x: 0, y: 0, z: 0 });
-  const [landmarks, setLandmarks] = useState<LandmarksCorners>({ x: 0, y: 0, z: 0 });
+  const [landmarksCorners, setLandmarksCorners] = useState<LandmarksCorners[]>([]);
   const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
 
   useEffect(() => {
-    // 初期座標をHTTPリクエストで取得
     fetch('http://localhost:8000/coordinates')
       .then(response => response.json())
       .then(data => setCoordinates(data))

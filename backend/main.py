@@ -14,6 +14,7 @@ class ProjectManager:
     def __init__(self) -> None:
         self.last_update = time.time()
         self.coordinates = {"x": 0, "y": 0, "z": 0}
+        self.landmarks_corners = []
 
     def update_coordinates(self):
         if self.coordinates['x'] == 10:
@@ -75,14 +76,14 @@ async def upload_file(request: Request):
     body = await request.body()
     json_data = body.decode('utf-8')
 
-    # json.loadsを使用して文字列から辞書に変換
     data = json.loads(json_data)
 
-    # keyの一覧を表示
-    for i in data:
-        print(i)
-    
-    return {"received_content": json_data}
+    for marker_id in data['landmarks']:
+        for i, corner in enumerate(marker_id['corners']):
+            id = int(marker_id + str(i))
+            project.landmarks_corners.append({"id": id, "x": 0, "y": 0, "z": 0})
+
+    return {"state_message": 0}
 
 @app.post("/start")
 def start():
@@ -98,12 +99,12 @@ def stop():
     print(f'drone_state:{drone_controller.drone_state}')
     return {"status": f"{drone_controller.drone_state}"}
 
-@app.get("/data")
-async def get_data():
-    file_path = os.path.join(os.path.dirname(__file__), '..', 'data.json')
-    with open(file_path, 'r') as file:
-        data = json.load(file)
-    return data
+# @app.get("/data")
+# async def get_data():
+#     file_path = os.path.join(os.path.dirname(__file__), '..', 'data.json')
+#     with open(file_path, 'r') as file:
+#         data = json.load(file)
+#     return data
 
 # @app.get("setproject/{file_path}")
 # async def set_project(file_path):
@@ -113,3 +114,5 @@ async def get_data():
 # async def set_cam_pos(file_path:str):
 #     project.set_cam_pos(file_path)
 
+if __name__ == '__main__':
+    pass
