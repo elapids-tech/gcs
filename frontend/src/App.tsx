@@ -19,6 +19,12 @@ const R1Left = () => {
   const [landmarksCorners, setLandmarksCorners] = useState<LandmarksCorners[]>([]);
   const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
 
+  let cam_pos: number[] = [0.8837511461111193, 1.273606628730099, -0.04604716620709769];
+  let cam_axis_x: number[] = [0.009925571161736535,-0.02566810726314839,-0.9996212439252385];
+  let cam_axis_y: number[] = [0.9220628954311656,-0.3865694042852517,0.01908173314038775];
+  let cam_axis_z: number[] = [-0.3869127807480762, -0.9219030556083829, 0.01983068717211323];
+  let axis_color: string[] = ["red", "green", "blue"]
+
   useEffect(() => {
     // create websocket
     const ws = new WebSocket('ws://localhost:8000/ws');
@@ -58,22 +64,22 @@ const R1Left = () => {
         ))}
 
         <Line
-          points={[[0.871116,1.26046,0.0277326], 
-                   [0.873161,1.2583,0.22771]]}
+          points={[[0.8718785913511636, 0.02561684830236978, 1.259717682823211], 
+                  [0.8818871746908766, 1.025524706031532,1.250546842566777]]}
           color="red" 
           lineWidth={2}  
           segments
         />
         <Line
-          points={[[0.871116,1.26046,0.0277326], 
-                   [1.05626,1.18487,0.0250218]]}
+          points={[[0.8718785913511636, 0.02561684830236978, 1.259717682823211], 
+                  [1.797489764997355,0.0128826421824138,0.8814561394225951]]}
           color="green" 
           lineWidth={2}  
           segments
         />
         <Line
-          points={[[0.871116,1.26046,0.0277326], 
-                   [0.795502,1.07531,0.0265044]]}
+          points={[[0.8718785913511636, 0.02561684830236978, 1.259717682823211], 
+                  [0.4935351184580095, 0.0209140782706234, 0.3340643457292556]]}
           color="blue" 
           lineWidth={2}  
           segments
