@@ -49,9 +49,10 @@ const R1Left = () => {
     <Canvas className='left' camera={{ position: [10, 12, 12], fov: 25 }} style={{ border: "1px solid red" }}>
       <group position={[0, 0, 0]}>
         <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} args={[10, 10]} {...gridConfig} />  
-        <Line points={[[0, 0, 0], [1, 0, 0]]} color="red" lineWidth={3} segments/>
+        {/* 原点軸 */}
+        {/* <Line points={[[0, 0, 0], [1, 0, 0]]} color="red" lineWidth={3} segments/>
         <Line points={[[0, 0, 0], [0, 1, 0]]} color="green" lineWidth={3} segments/>
-        <Line points={[[0, 0, 0], [0, 0, 1]]} color="blue" lineWidth={3} segments/>
+        <Line points={[[0, 0, 0], [0, 0, 1]]} color="blue" lineWidth={3} segments/> */}
 
         <Sphere args={[0.1, 32, 32]} position={[0, 0, 0]}>
           <meshStandardMaterial attach="material" color="blue" />
@@ -63,6 +64,7 @@ const R1Left = () => {
         </Sphere>
         ))}
 
+        {/* カメラ位置 */}
         <Line
           points={[[0.8718785913511636, 0.02561684830236978, 1.259717682823211], 
                   [0.8818871746908766, 1.025524706031532,1.250546842566777]]}
@@ -84,6 +86,77 @@ const R1Left = () => {
           lineWidth={2}  
           segments
         />
+
+        {/* 回転行列 変換前*/}
+        {/* <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [0.01000858333971266, 0.9999078577291625, -0.009170840256436968]]}
+          color="red" 
+          lineWidth={2}  
+          segments
+        />
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [0.9256111736461912, -0.0127342061199569, -0.3782615434006145]]}
+          color="green" 
+          lineWidth={2}  
+          segments
+        />
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [-0.3783434728931537, -0.00470277003174896, -0.9256533370939555]]}
+          color="blue" 
+          lineWidth={2}  
+          segments
+        /> */}
+
+        {/* 回転行列 変換後*/}
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [-0.3783434728931537, -0.00470277003174896, -0.9256533370939555]]}
+          color="red" 
+          lineWidth={2}  
+          segments
+        />
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [-0.01000858333971266, -0.9999078577291625, 0.009170840256436968]]}
+          color="green" 
+          lineWidth={2}  
+          segments
+        />
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [-0.9256111736461912, 0.0127342061199569, 0.3782615434006145]]}
+          color="blue" 
+          lineWidth={2}  
+          segments
+        />
+
+        {/* flu_cam_mat */}
+        {/* <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [-0.37834346, -0.010008584, 0.9256112]]}
+          color="red" 
+          lineWidth={2}  
+          segments
+        />
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [-0.0047027702, -0.99990785, -0.012734206]]}
+          color="green" 
+          lineWidth={2}  
+          segments
+        />
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [-0.92565334, 0.0091708405, -0.37826154]]}
+          color="blue" 
+          lineWidth={2}  
+          segments
+        /> */}
+
+
       </group>
       <OrbitControls makeDefault enableDamping={false} />
       <Environment preset="city" />
