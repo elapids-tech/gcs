@@ -111,7 +111,7 @@ const R1Left = () => {
         /> */}
 
         {/* 回転行列 変換後*/}
-        <Line
+        {/* <Line
           points={[[0.0, 0.0, 0.0], 
                   [-0.3783434728931537, -0.00470277003174896, -0.9256533370939555]]}
           color="red" 
@@ -131,7 +131,52 @@ const R1Left = () => {
           color="blue" 
           lineWidth={2}  
           segments
+        /> */}
+
+
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [0.7071067811865476, 0, -0.7071067811865475]]}
+          color="red" 
+          lineWidth={2}  
+          segments
         />
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [0, 1, 0]]}
+          color="green" 
+          lineWidth={2}  
+          segments
+        />
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [0.7071067811865475, 0, 0.7071067811865476]]}
+          color="blue" 
+          lineWidth={2}  
+          segments
+        />
+
+        {/* <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [0.4586583741122357, 0.003559066956693537, 0.8886055530431476]]}
+          color="red" 
+          lineWidth={2}  
+          segments
+        />
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [-0.01000858333971266, -0.9999078577291625,  0.009170840256436968]]}
+          color="green" 
+          lineWidth={2}  
+          segments
+        />
+        <Line
+          points={[[0.0, 0.0, 0.0], 
+                  [0.8885563145441331, -0.01309996541502443, -0.4585804910698587]]}
+          color="blue" 
+          lineWidth={2}  
+          segments
+        /> */}
 
         {/* flu_cam_mat */}
         {/* <Line
