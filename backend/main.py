@@ -49,7 +49,7 @@ class ProjectManager:
     def get_coordinates(self):
         return self.coordinates
 
-drone_controller = DroneController(interval=1, host='192.168.0.5', port=5000)
+drone_controller = DroneController(interval=1, host='192.168.0.6', port=5000)
 drone_controller.start()
 
 manager = ConnectionManager()
