@@ -2,6 +2,8 @@ import json
 import socket
 import time
 import threading
+import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 class DroneController:
     def __init__(self, interval=1, host='192.168.0.1', port=5000, recv_port=5001):
@@ -33,6 +35,30 @@ class DroneController:
     def get_received_data(self):
         with self.lock:
             return self.received_data
+        
+    def get_drone_attitude_axis(self): 
+        with self.lock: 
+            if self.received_data is None:
+                return None
+
+            x_axis = np.array([0.2, 0, 0])  
+            y_axis = np.array([0, 0.2, 0]) 
+            z_axis = np.array([0, 0, 0.2])    
+
+            # rotation を Rotation オブジェクトに変換
+            rotation = R.from_rotvec(np.array(self.received_data['rvec']))
+            translation = np.array(self.received_data['tvec'])
+
+            rotated_x_axis = rotation.apply(x_axis) + translation
+            rotated_y_axis = rotation.apply(y_axis) + translation
+            rotated_z_axis = rotation.apply(z_axis) + translation
+
+            attitude_axis = [{"points":[translation.tolist(), rotated_x_axis.tolist()], "color":"red"},
+                             {"points":[translation.tolist(), rotated_y_axis.tolist()], "color":"green"},
+                             {"points":[translation.tolist(), rotated_z_axis.tolist()], "color":"blue"}]
+        
+            return attitude_axis
+
 
     def _send(self):
         while not self.stop_event.is_set():
@@ -54,7 +80,7 @@ class DroneController:
                     received_message = json.loads(data.decode('utf-8'))
                     with self.lock:
                         self.received_data = received_message
-                    print(f"Received: {received_message} from {addr}")
+                    # print(f"Received: {received_message} from {addr}")
                 except Exception as e:
                     print(f"Error receiving data: {e}")
 
