@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useCallback, useRef, memo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef, memo } from 'react';
 import * as THREE from "three";
 import { Canvas } from '@react-three/fiber'
 import { Grid, Line, GizmoHelper, GizmoViewport, OrbitControls, Environment, Sphere, Box } from '@react-three/drei'
 import Split from "react-split";
 import './styles.css';
 import ApexCharts from 'react-apexcharts';
-
 
 type LandmarksCorners = {
   id:string;
@@ -14,35 +13,73 @@ type LandmarksCorners = {
   z: number;
 };
 
+type LineData = {
+  points: [number, number, number][];
+  color: string;
+};
+
+type WebSocketMessage = 
+  | { key: "setLandmarks"; value: LandmarksCorners[] }
+  | { key: "dronePosUpdate"; value: any };
 
 const R1Left = () => {
   const [landmarksCorners, setLandmarksCorners] = useState<LandmarksCorners[]>([]);
+  const centerAxis = [
+    {
+      points: [0, 0, 0, 1, 0, 0], // [x1, y1, z1, x2, y2, z2] の形式
+      color: 'red'
+    },
+    {
+      points: [0, 0, 0, 0, 1, 0],
+      color: 'green'
+    },
+    {
+      points: [0, 0, 0, 0, 0, 1],
+      color: 'blue'
+    }
+  ];
+  const [dronePos, setDronePos] = useState<LineData[]>([]);
+  
   const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
-
-  let cam_pos: number[] = [0.8837511461111193, 1.273606628730099, -0.04604716620709769];
-  let cam_axis_x: number[] = [0.009925571161736535,-0.02566810726314839,-0.9996212439252385];
-  let cam_axis_y: number[] = [0.9220628954311656,-0.3865694042852517,0.01908173314038775];
-  let cam_axis_z: number[] = [-0.3869127807480762, -0.9219030556083829, 0.01983068717211323];
-  let axis_color: string[] = ["red", "green", "blue"]
 
   useEffect(() => {
     // create websocket
     const ws = new WebSocket('ws://localhost:8000/ws');
+
+    ws.onopen = () => {
+      console.log("WebSocket connection established");
+    };
   
     // received message
     ws.onmessage = (event) => {
-      const data: LandmarksCorners[] = JSON.parse(event.data);
-      setLandmarksCorners(data);
+      const data = JSON.parse(event.data);
+
+      switch (data.key) {
+        case "setLandmarks":
+          setLandmarksCorners(data.value);
+          break;
+        case "dronePosUpdate":
+          // setDronePos([]); 
+          setDronePos(data.value);
+          break;
+        default:
+          console.warn(`Unknown key: ${data.key}`);
+      }
     };
-  
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
     ws.onclose = () => {
       console.log('WebSocket connection closed');
     };
-  
+
     return () => {
       ws.close();
     };
   }, []);
+
 
   THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
   return (
@@ -64,56 +101,23 @@ const R1Left = () => {
         </Sphere>
         ))}
 
-        {/* カメラ位置 */}
-        <Line
-          points={[[0.8718785913511636, 0.02561684830236978, 1.259717682823211], 
-                  [0.8818871746908766, 1.025524706031532,1.250546842566777]]}
-          color="red" 
-          lineWidth={2}  
-          segments
-        />
-        <Line
-          points={[[0.8718785913511636, 0.02561684830236978, 1.259717682823211], 
-                  [1.797489764997355,0.0128826421824138,0.8814561394225951]]}
-          color="green" 
-          lineWidth={2}  
-          segments
-        />
-        <Line
-          points={[[0.8718785913511636, 0.02561684830236978, 1.259717682823211], 
-                  [0.4935351184580095, 0.0209140782706234, 0.3340643457292556]]}
-          color="blue" 
-          lineWidth={2}  
-          segments
-        />
+        {centerAxis.map((line, index) => (
+          <Line
+            key={index}
+            points={line.points}
+            color={line.color}
+            lineWidth={2}
+          />
+        ))}
 
-{/* [-0.9220351729276784, -0.01000858333971266, -0.3869767023268431, 0.9196516914475454;
- 0.005679082920638194, -0.9999078577291625, 0.01232980408025933, 0.02565315546383638;
- -0.387064449286429, 0.009170840256436968, 0.9220070540877571, 1.315813400921575; */}
-
-
-        {/* 回転行列 変換後*/}
-        <Line
-          points={[[0.9196516914475454, 0.02565315546383638, 1.315813400921575], 
-                  [-0.002383481480133, 0.031332238384475, 0.928748951635146]]}
-          color="red" 
-          lineWidth={2}  
-          segments
-        />
-        <Line 
-          points={[[0.9196516914475454, 0.02565315546383638, 1.315813400921575], 
-                  [0.909643108107833, -0.974254702265326, 1.324984241178012]]}
-          color="green" 
-          lineWidth={2}  
-          segments
-        />
-        <Line
-          points={[[0.9196516914475454, 0.02565315546383638, 1.315813400921575], 
-                  [0.532674989120702, 0.037982959544096, 2.237820455009332]]}
-          color="blue" 
-          lineWidth={2}  
-          segments
-        />
+        {dronePos?.map((line, index) => (
+          <Line
+            key={index}
+            points={line.points}
+            color={line.color}
+            lineWidth={2}
+          />
+        ))}
 
       </group>
       <OrbitControls makeDefault enableDamping={false} />
