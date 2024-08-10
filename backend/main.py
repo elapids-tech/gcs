@@ -49,7 +49,7 @@ class ProjectManager:
     def get_coordinates(self):
         return self.coordinates
 
-drone_controller = DroneController(interval=1, host='192.168.0.6', port=5000)
+drone_controller = DroneController(interval=0.01, host='192.168.0.6', port=5000)
 drone_controller.start()
 
 manager = ConnectionManager()
@@ -67,11 +67,26 @@ app.add_middleware(
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
+    print("WebSocket connection established") 
     try:
         while True:
-            await websocket.receive_text()
+            result = drone_controller.get_drone_attitude_axis()
+            if result == None:
+                continue
+
+            data = {
+                "key": "dronePosUpdate",
+                "value": result
+            }
+            
+            print('send json data:', data)
+            await websocket.send_text(json.dumps(data))
+            await asyncio.sleep(0.016) 
+
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+        print("WebSocket disconnected") 
+
 
 @app.post("/upload/")
 async def upload_file(request: Request):
@@ -104,21 +119,6 @@ def stop():
     drone_controller.set_drone_state(0)
     print(f'drone_state:{drone_controller.drone_state}')
     return {"status": f"{drone_controller.drone_state}"}
-
-# @app.get("/data")
-# async def get_data():
-#     file_path = os.path.join(os.path.dirname(__file__), '..', 'data.json')
-#     with open(file_path, 'r') as file:
-#         data = json.load(file)
-#     return data
-
-# @app.get("setproject/{file_path}")
-# async def set_project(file_path):
-#     project.set_project(file_path)
-
-# @app.post("setcampos/{file_path}")
-# async def set_cam_pos(file_path:str):
-#     project.set_cam_pos(file_path)
 
 if __name__ == '__main__':
     pass
