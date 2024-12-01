@@ -6,24 +6,25 @@ import Split from "react-split";
 import './styles.css';
 import ApexCharts from 'react-apexcharts';
 
-type LandmarksCorners = {
+type Landmarks = {
   id:string;
   x: number;
   y: number;
   z: number;
 };
 
+type WebSocketMessage = 
+| { key: "setLandmarks"; value: Landmarks[] }
+| { key: "dronePosUpdate"; value: any };
+
 type LineData = {
   points: [number, number, number][];
   color: string;
 };
 
-type WebSocketMessage = 
-  | { key: "setLandmarks"; value: LandmarksCorners[] }
-  | { key: "dronePosUpdate"; value: any };
-
-const R1Left = () => {
-  const [landmarksCorners, setLandmarksCorners] = useState<LandmarksCorners[]>([]);
+const Viewer3d = () => {
+  // grid init value
+  const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
   const centerAxis = [
     {
       points: [0, 0, 0, 1, 0, 0], // [x1, y1, z1, x2, y2, z2] の形式
@@ -38,10 +39,12 @@ const R1Left = () => {
       color: 'blue'
     }
   ];
+
+  // draw objects value
+  const [landmarks, setLandmarks] = useState<Landmarks[]>([]); 
   const [dronePos, setDronePos] = useState<LineData[]>([]);
   
-  const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
-
+  // websocket 
   useEffect(() => {
     // create websocket
     const ws = new WebSocket('ws://localhost:8000/ws');
@@ -56,7 +59,7 @@ const R1Left = () => {
 
       switch (data.key) {
         case "setLandmarks":
-          setLandmarksCorners(data.value);
+          setLandmarks(data.value);
           break;
         case "dronePosUpdate":
           // setDronePos([]); 
@@ -95,7 +98,7 @@ const R1Left = () => {
           <meshStandardMaterial attach="material" color="blue" />
         </Sphere> */}
 
-        {landmarksCorners.map((corner) => (
+        {landmarks.map((corner) => (
         <Sphere args={[0.03, 32, 32]} position={[corner.x, corner.y, corner.z]}>
           <meshStandardMaterial attach="material" color="orange" />
         </Sphere>
@@ -129,7 +132,7 @@ const R1Left = () => {
   );
 };
 
-const R1Right: React.FC = () => {
+const ProjectManagementPanel: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filePath, setFilePath] = useState('');
   const [fileContent, setFileContent] = useState('');
@@ -155,7 +158,7 @@ const R1Right: React.FC = () => {
     }
   };
 
-  const LoadProject = () => {
+  const LoadClusters = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
@@ -202,9 +205,9 @@ const R1Right: React.FC = () => {
   return (
     <div className='right' style={{ border: "1px solid red", height: '100%', overflowY: 'auto'}}>
       <div style={{ minHeight: containerHeight + 100 }}>
-        <h1>Component B</h1>
+        <h1>Project</h1>
         <div className='bottons-column'>
-          <button onClick={LoadProject}>Load Project</button>
+          <button onClick={LoadClusters}>Load Clusters</button>
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -237,10 +240,9 @@ function R1() {
         snapOffset={30}
         dragInterval={1}
         direction="horizontal"
-        cursor="col-resize"
-      >
-        <R1Left />
-        <R1Right />
+        cursor="col-resize">
+        <Viewer3d />
+        <ProjectManagementPanel />
       </Split>
     </div>
   );
