@@ -98,19 +98,14 @@ const Viewer3d = () => {
           <meshStandardMaterial attach="material" color="blue" />
         </Sphere> */}
 
-        {landmarks.map((corner) => (
-        <Sphere args={[0.03, 32, 32]} position={[corner.x, corner.y, corner.z]}>
-          <meshStandardMaterial attach="material" color="orange" />
-        </Sphere>
+        {landmarks.map((center) => (
+          <Sphere args={[0.03, 32, 32]} position={[center.x, center.y, center.z]}>
+            <meshStandardMaterial attach="material" color="orange" />
+          </Sphere>
         ))}
 
         {centerAxis.map((line, index) => (
-          <Line
-            key={index}
-            points={line.points}
-            color={line.color}
-            lineWidth={2}
-          />
+          <Line key={index} points={line.points} color={line.color} lineWidth={2} />
         ))}
 
         {dronePos?.map((line, index) => (

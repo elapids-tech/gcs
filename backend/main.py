@@ -46,6 +46,9 @@ class ProjectManager:
 
         self.last_update = time.time()
 
+    def add_landmark(self, id, x, y, z):
+        self.landmarks_corners.append({"id":id, "x": x, "y": y, "z": z})
+
     def get_coordinates(self):
         return self.coordinates
 
