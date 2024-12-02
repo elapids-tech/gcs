@@ -32,7 +32,7 @@ class ProjectManager:
     def __init__(self) -> None:
         self.last_update = time.time()
         self.coordinates = {"x": 0, "y": 0, "z": 0}
-        self.landmarks_corners = []
+        self.landmarks = []
 
     def update_coordinates(self):
         if self.coordinates['x'] == 10:
@@ -47,7 +47,7 @@ class ProjectManager:
         self.last_update = time.time()
 
     def add_landmark(self, id, x, y, z):
-        self.landmarks_corners.append({"id":id, "x": x, "y": y, "z": z})
+        self.landmarks.append({"id":id, "x": x, "y": y, "z": z})
 
     def get_coordinates(self):
         return self.coordinates
@@ -98,14 +98,14 @@ async def upload_file(request: Request):
 
     data = json.loads(json_data)
 
-    project.landmarks_corners.clear()
+    project.landmarks.clear()
 
     for marker_id in data['landmarks']:
         for i, pos in enumerate(data['landmarks'][marker_id]['corners']):
             id = str(marker_id) + str(i)
-            project.landmarks_corners.append({"id":id, "x":pos[0], "y":pos[1], "z":pos[2]})
+            project.landmarks.append({"id":id, "x":pos[0], "y":pos[1], "z":pos[2]})
 
-    await manager.broadcast(json.dumps(project.landmarks_corners))
+    await manager.broadcast(json.dumps(project.landmarks))
 
     return {"state_message": 0}
 

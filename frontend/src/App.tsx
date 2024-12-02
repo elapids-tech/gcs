@@ -13,6 +13,16 @@ type Landmarks = {
   z: number;
 };
 
+// Define a colormap with 6 colors
+const colorMap: { [key: string]: string } = {
+  id1: "red",
+  id2: "blue",
+  id3: "green",
+  id4: "orange",
+  id5: "purple",
+  id6: "yellow",
+};
+
 type WebSocketMessage = 
 | { key: "setLandmarks"; value: Landmarks[] }
 | { key: "dronePosUpdate"; value: any };
@@ -89,18 +99,17 @@ const Viewer3d = () => {
     <Canvas className='left' camera={{ position: [10, 12, 12], fov: 25 }} style={{ border: "1px solid red" }}>
       <group position={[0, 0, 0]}>
         <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]} args={[10, 10]} {...gridConfig} />  
-        {/* 原点軸 */}
-        {/* <Line points={[[0, 0, 0], [1, 0, 0]]} color="red" lineWidth={3} segments/>
-        <Line points={[[0, 0, 0], [0, 1, 0]]} color="green" lineWidth={3} segments/>
-        <Line points={[[0, 0, 0], [0, 0, 1]]} color="blue" lineWidth={3} segments/> */}
-
-        {/* <Sphere args={[0.1, 32, 32]} position={[0, 0, 0]}>
-          <meshStandardMaterial attach="material" color="blue" />
-        </Sphere> */}
 
         {landmarks.map((center) => (
-          <Sphere args={[0.03, 32, 32]} position={[center.x, center.y, center.z]}>
-            <meshStandardMaterial attach="material" color="orange" />
+          <Sphere
+            key={center.id}
+            args={[0.03, 32, 32]}
+            position={[center.x, center.y, center.z]}
+          >
+          <meshStandardMaterial
+            attach="material"
+            color={colorMap[center.id] || "gray"} // Default to gray if id not found
+          />
           </Sphere>
         ))}
 
