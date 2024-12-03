@@ -178,6 +178,12 @@ const ProjectManagementPanel: React.FC = () => {
     }
   };
 
+  const LoadImage = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const handleClickStart = () => {
     fetch('http://localhost:8000/start', {
       method: 'POST',
@@ -222,6 +228,17 @@ const ProjectManagementPanel: React.FC = () => {
         <h1>Project</h1>
         <div className='bottons-column'>
           <button onClick={LoadClusters}>Load Clusters</button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            style={{ display: 'none' }} 
+            onChange={handleFileChange} 
+            accept=".json"
+          />
+          <p>選択されたファイルのパス:</p>
+          <p>{filePath}</p>
+
+          <button onClick={LoadImage}>Add Image</button>
           <input 
             type="file" 
             ref={fileInputRef} 
