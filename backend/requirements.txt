@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 numpy==2.0.0
 opencv-python==4.6.0.66
 qrcode

@@ -100,11 +100,12 @@ async def upload_file(request: Request):
 
     project.landmarks.clear()
 
-    for marker_id in data['landmarks']:
-        for i, pos in enumerate(data['landmarks'][marker_id]['corners']):
-            id = str(marker_id) + str(i)
-            project.landmarks.append({"id":id, "x":pos[0], "y":pos[1], "z":pos[2]})
+    for landmark in data:
+        id = str(landmark['id'])
+        pos = landmark['center']
+        project.landmarks.append({"id":id, "x":pos[0], "y":pos[1], "z":pos[2]})
 
+    print(project.landmarks)
     await manager.broadcast(json.dumps(project.landmarks))
 
     return {"state_message": 0}

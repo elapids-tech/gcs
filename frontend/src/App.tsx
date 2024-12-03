@@ -15,12 +15,18 @@ type Landmarks = {
 
 // Define a colormap with 6 colors
 const colorMap: { [key: string]: string } = {
-  id1: "red",
-  id2: "blue",
-  id3: "green",
-  id4: "orange",
-  id5: "purple",
-  id6: "yellow",
+  "1": "red",
+  "2": "blue",
+  "3": "green",
+  "4": "orange",
+  "5": "purple",
+  "6": "yellow",
+};
+
+// Function to get a color based on the ID
+const getColorForId = (id: number | string): string => {
+  const idStr = id.toString(); // Ensure the ID is a string
+  return colorMap[idStr] || "gray"; // Default to gray if the ID is not in the colormap
 };
 
 type WebSocketMessage = 
@@ -100,18 +106,21 @@ const Viewer3d = () => {
       <group position={[0, 0, 0]}>
         <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]} args={[10, 10]} {...gridConfig} />  
 
-        {landmarks.map((center) => (
-          <Sphere
-            key={center.id}
-            args={[0.03, 32, 32]}
-            position={[center.x, center.y, center.z]}
-          >
-          <meshStandardMaterial
-            attach="material"
-            color={colorMap[center.id] || "gray"} // Default to gray if id not found
-          />
-          </Sphere>
-        ))}
+        {landmarks.map((center) => {
+          console.log("Rendering Sphere at position:", center);
+          return (
+            <Sphere
+              key={center.id}
+              args={[0.03, 32, 32]}
+              position={[center.x, center.y, center.z]}
+            >
+              <meshStandardMaterial
+                attach="material"
+                color={getColorForId(center.id)}
+              />
+            </Sphere>
+          );
+        })}
 
         {centerAxis.map((line, index) => (
           <Line key={index} points={line.points} color={line.color} lineWidth={2} />
@@ -144,6 +153,7 @@ const ProjectManagementPanel: React.FC = () => {
   const [containerHeight, setContainerHeight] = useState(0);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('handleFileChange')
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
       const text = await file.text();
