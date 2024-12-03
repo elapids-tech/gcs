@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from typing import List
 from typing import Dict
 
-from drone_controller import DroneController
+# from drone_controller import DroneController
 
 class ConnectionManager:
     def __init__(self):
@@ -52,8 +52,8 @@ class ProjectManager:
     def get_coordinates(self):
         return self.coordinates
 
-drone_controller = DroneController(interval=0.01, host='192.168.0.6', port=5000)
-drone_controller.start()
+# drone_controller = DroneController(interval=0.01, host='192.168.0.6', port=5000)
+# drone_controller.start()
 
 manager = ConnectionManager()
 project = ProjectManager()
@@ -73,18 +73,18 @@ async def websocket_endpoint(websocket: WebSocket):
     print("WebSocket connection established") 
     try:
         while True:
-            result = drone_controller.get_drone_attitude_axis()
-            if result == None:
-                continue
-
-            data = {
-                "key": "dronePosUpdate",
-                "value": result
-            }
-            
-            print('send json data:', data)
-            await websocket.send_text(json.dumps(data))
-            await asyncio.sleep(0.05) 
+            # result = drone_controller.get_drone_attitude_axis()
+            # if result != None:
+            #     data = {
+            #         "key": "dronePosUpdate",
+            #         "value": result
+            #     }
+                
+            #     print('send json data:', data)
+            #     await websocket.send_text(json.dumps(data))
+            data = await websocket.receive_text()
+            await manager.broadcast(f"Message from client: {data}")
+   
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -106,24 +106,25 @@ async def upload_file(request: Request):
         pos = landmark['center']
         project.landmarks.append({"id":id, "x":pos[0], "y":pos[1], "z":pos[2]})
 
-    print(project.landmarks)
-    await manager.broadcast(json.dumps(project.landmarks))
+    send_data = {"key":"setLandmarks", "value":project.landmarks}
+    print(send_data)
+    await manager.broadcast(json.dumps(send_data))
 
     return {"state_message": 0}
 
 @app.post("/start")
 def start():
     print('start pressed')
-    drone_controller.set_drone_state(1)
-    print(f'drone_state:{drone_controller.drone_state}')
-    return {"status": f"{drone_controller.drone_state}"}
+    # drone_controller.set_drone_state(1)
+    # print(f'drone_state:{drone_controller.drone_state}')
+    # return {"status": f"{drone_controller.drone_state}"}
 
 @app.post("/stop")
 def stop():
     print('stop pressed')
-    drone_controller.set_drone_state(0)
-    print(f'drone_state:{drone_controller.drone_state}')
-    return {"status": f"{drone_controller.drone_state}"}
+    # drone_controller.set_drone_state(0)
+    # print(f'drone_state:{drone_controller.drone_state}')
+    # return {"status": f"{drone_controller.drone_state}"}
 
 
 # @app.route("/api/trajectory-planning", methods=["POST"])
