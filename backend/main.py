@@ -93,6 +93,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.post("/upload/")
 async def upload_file(request: Request):
+    print('upload_file')
     body = await request.body()
     json_data = body.decode('utf-8')
 
