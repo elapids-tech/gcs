@@ -246,7 +246,7 @@ const ProjectManagementPanel: React.FC = () => {
             onChange={handleFileChange} 
             accept=".json"
           />
-          <p>選択されたファイルのパス:</p>
+          <p>選択された画像ファイルをリストで表示したい:</p>
           <p>{filePath}</p>
 
           <button onClick={handleClickStart}>Start</button>
