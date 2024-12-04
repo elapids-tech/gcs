@@ -83,6 +83,7 @@ async def upload_file(request: Request):
 
 @app.post("/upload-image")
 async def upload_imgae(request: Request):
+    pass
     
 
 
