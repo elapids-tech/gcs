@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2024-12-24T07:20:28.874Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.0.3 Chrome/114.0.5735.289 Electron/25.8.4 Safari/537.36" etag="XhFC_Z5dx0o5jFKLqfPS" version="22.0.3" type="device" pages="6">
+<mxfile host="Electron" modified="2024-12-26T08:28:51.979Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.0.3 Chrome/114.0.5735.289 Electron/25.8.4 Safari/537.36" etag="REfmMQ4H9S60YnTpxgsV" version="22.0.3" type="device" pages="6">
   <diagram name="概要" id="KyckfTdw7PnfaO1ii580">
-    <mxGraphModel dx="1434" dy="836" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+    <mxGraphModel dx="1015" dy="735" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -20,10 +20,13 @@
     </mxGraphModel>
   </diagram>
   <diagram name="機能" id="WEIH03K0BKq-IK8hbyyO">
-    <mxGraphModel dx="2049" dy="1194" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+    <mxGraphModel dx="2861" dy="1220" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-0" />
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-1" parent="eVOCJrVsWdeTUgFKmBaz-0" />
+        <mxCell id="AOB9gOiaGKDVmHF6YN63-0" value="" style="rounded=0;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="-1120" y="3360" width="1040" height="720" as="geometry" />
+        </mxCell>
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=12;" parent="eVOCJrVsWdeTUgFKmBaz-1" source="eVOCJrVsWdeTUgFKmBaz-3" target="eVOCJrVsWdeTUgFKmBaz-9" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
@@ -68,7 +71,7 @@
           <mxGeometry x="110" y="980" width="80" height="100" as="geometry" />
         </mxCell>
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-15" value="Front" style="swimlane;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
-          <mxGeometry x="280" y="890" width="460" height="810" as="geometry" />
+          <mxGeometry x="280" y="890" width="460" height="670" as="geometry" />
         </mxCell>
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-16" value="ProjectManagementPanel" style="swimlane;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-15" vertex="1">
           <mxGeometry x="50" y="70" width="200" height="200" as="geometry" />
@@ -82,7 +85,7 @@
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-19" value="class Project" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fontSize=12;" parent="eVOCJrVsWdeTUgFKmBaz-18" vertex="1">
           <mxGeometry x="70" y="60" width="200" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="PZFtHVs2kvjMPvQxO2Eu-6" value="プロジェクトに関する変数を扱う（import, export, ファイルパスなど" style="text;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-19">
+        <mxCell id="PZFtHVs2kvjMPvQxO2Eu-6" value="プロジェクトに関する変数を扱う（import, export, ファイルパスなど" style="text;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="eVOCJrVsWdeTUgFKmBaz-19" vertex="1">
           <mxGeometry y="30" width="200" height="60" as="geometry" />
         </mxCell>
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-20" value="Landmark Pos" style="text;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="eVOCJrVsWdeTUgFKmBaz-19" vertex="1">
@@ -91,13 +94,13 @@
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-22" value="set_landmark_pos" style="text;strokeColor=#d79b00;fillColor=#ffe6cc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="eVOCJrVsWdeTUgFKmBaz-19" vertex="1">
           <mxGeometry y="120" width="200" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="PZFtHVs2kvjMPvQxO2Eu-1" value="class ---" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-18">
+        <mxCell id="PZFtHVs2kvjMPvQxO2Eu-1" value="class ---" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fontSize=12;" parent="eVOCJrVsWdeTUgFKmBaz-18" vertex="1">
           <mxGeometry x="120" y="315" width="140" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="PZFtHVs2kvjMPvQxO2Eu-2" value="" style="text;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="PZFtHVs2kvjMPvQxO2Eu-1">
+        <mxCell id="PZFtHVs2kvjMPvQxO2Eu-2" value="" style="text;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="PZFtHVs2kvjMPvQxO2Eu-1" vertex="1">
           <mxGeometry y="30" width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="PZFtHVs2kvjMPvQxO2Eu-4" value="set_landmark_pos" style="text;strokeColor=#d79b00;fillColor=#ffe6cc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="PZFtHVs2kvjMPvQxO2Eu-1">
+        <mxCell id="PZFtHVs2kvjMPvQxO2Eu-4" value="set_landmark_pos" style="text;strokeColor=#d79b00;fillColor=#ffe6cc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="PZFtHVs2kvjMPvQxO2Eu-1" vertex="1">
           <mxGeometry y="60" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-23" value="Viewer3d" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fontSize=12;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
@@ -115,8 +118,161 @@
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-27" value="カメラ6DoF入力" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
           <mxGeometry x="90" y="1150" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="PZFtHVs2kvjMPvQxO2Eu-5" value="&lt;h1&gt;&lt;font style=&quot;font-size: 20px;&quot;&gt;クラスター検出に必要なパラメータ&lt;/font&gt;&lt;/h1&gt;&lt;div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; // dot detection param&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; float min_dot_area_ = 10.0;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; float max_dot_area_ = 350.0;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; cv::Scalar lower_green_ = cv::Scalar(35, 100, 100); // H: 35, S: 100, V: 100&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; cv::Scalar upper_green_ = cv::Scalar(85, 255, 255); // H: 85, S: 255, V: 255&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; // landmark detection param&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; double include_gain_ = 1.5;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; int include_min_dot_num_ = 1;&amp;nbsp;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; int include_max_dot_num_ = 7;&amp;nbsp;&lt;/div&gt;&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
-          <mxGeometry x="1431" y="1220" width="470" height="200" as="geometry" />
+        <mxCell id="PZFtHVs2kvjMPvQxO2Eu-5" value="&lt;h1&gt;&lt;font style=&quot;font-size: 20px;&quot;&gt;クラスター検出に必要なパラメータ（Drone Appでも使用する？）&lt;/font&gt;&lt;/h1&gt;&lt;div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; // dot detection param&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; float min_dot_area_ = 10.0;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; float max_dot_area_ = 350.0;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; cv::Scalar lower_green_ = cv::Scalar(35, 100, 100); // H: 35, S: 100, V: 100&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; cv::Scalar upper_green_ = cv::Scalar(85, 255, 255); // H: 85, S: 255, V: 255&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; // landmark detection param&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; double include_gain_ = 1.5;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; int include_min_dot_num_ = 1;&amp;nbsp;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; int include_max_dot_num_ = 7;&amp;nbsp;&lt;/div&gt;&lt;/div&gt;" style="text;html=1;strokeColor=default;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="1431" y="1220" width="470" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-2" value="&lt;h1&gt;&lt;font style=&quot;font-size: 20px;&quot;&gt;クラスター検出に必要なパラメータ（コンフィグレーター）&lt;/font&gt;&lt;/h1&gt;&lt;div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; // dot detection param&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; float min_dot_area_ = 10.0;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; float max_dot_area_ = 350.0;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; cv::Scalar lower_green_ = cv::Scalar(35, 100, 100); // H: 35, S: 100, V: 100&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; cv::Scalar upper_green_ = cv::Scalar(85, 255, 255); // H: 85, S: 255, V: 255&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; // landmark detection param&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; double include_gain_ = 1.5;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; int include_min_dot_num_ = 1;&amp;nbsp;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; int include_max_dot_num_ = 7;&amp;nbsp;&lt;/div&gt;&lt;/div&gt;" style="text;html=1;strokeColor=default;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="1431" y="3367" width="470" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-3" value="オリジナル" style="rounded=0;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="-1040" y="3437" width="320" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-4" value="画像選択&lt;br&gt;・インポートしたsfm用の画像から&lt;b&gt;自動&lt;/b&gt;で選択&lt;br&gt;・インポートしたsfm用の画像から&lt;b&gt;手動&lt;/b&gt;で選択&lt;br&gt;・ローカルディレクトリから&lt;b&gt;手動&lt;/b&gt;で選択" style="rounded=0;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="480" y="3547" width="280" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-5" value="ドット検出面積" style="rounded=0;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="480" y="3647" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-6" value="HSV選択" style="rounded=0;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="480" y="3727" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-7" value="ドラッグアンドドロップで選択可" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="420" y="3317" width="270" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-8" value="インクルード半径" style="rounded=0;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="480" y="3807" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-9" value="クラスター要素数" style="rounded=0;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="480" y="3887" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-10" value="auto / manual" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="700" y="3337" width="190" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-12" value="ランドマーク種類選択" style="rounded=0;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="480" y="3467" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-13" value="マーカー検出設定" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=30;fontStyle=1;spacingLeft=10;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry y="3308" width="440" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-14" value="SfM設定（撮影カメラ位置推定）＆ビジュアル用objファイル作成" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=30;fontStyle=1;spacingLeft=10;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry y="2120" width="910" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-15" value="外部sfm.json" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="160" y="2556" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-16" value="( pg_obj )" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="160" y="2636" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-18" value="スキャンデバイスからストリームするか？" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="140" y="2309" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-19" value="ドラッグアンドドロップでインポートするか？" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="140" y="2389" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-20" value="ローカルで実行するか？" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="410" y="2299" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-21" value="サーバで実行するか？" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="410" y="2369" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-23" value="class DetectMarker" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fontSize=12;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="1240" y="3480" width="140" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-24" value="list: 設定用参考画像" style="text;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-23" vertex="1">
+          <mxGeometry y="30" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-31" value="min_dot_area" style="text;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-23" vertex="1">
+          <mxGeometry y="60" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-30" value="max_dot_area_&amp;nbsp;" style="text;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-23" vertex="1">
+          <mxGeometry y="90" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-35" value="lower_green_&amp;nbsp;" style="text;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-23" vertex="1">
+          <mxGeometry y="120" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-34" value="upper_green_&amp;nbsp;" style="text;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-23" vertex="1">
+          <mxGeometry y="150" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-33" value="include_gain_&amp;nbsp;" style="text;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-23" vertex="1">
+          <mxGeometry y="180" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-32" value="include_min_dot_num_&amp;nbsp;" style="text;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-23" vertex="1">
+          <mxGeometry y="210" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-36" value="include_max_dot_num_&amp;nbsp;" style="text;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-23" vertex="1">
+          <mxGeometry y="240" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-26" value="class DetectMarker" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fontSize=12;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="1240" y="3800" width="200" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-28" value="set_設定用参考画像" style="text;strokeColor=#d79b00;fillColor=#ffe6cc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-26" vertex="1">
+          <mxGeometry y="30" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-29" value="set_dot_area" style="text;strokeColor=#d79b00;fillColor=#ffe6cc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-26" vertex="1">
+          <mxGeometry y="60" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-37" value="set_検出する色ドットの" style="text;strokeColor=#d79b00;fillColor=#ffe6cc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-26" vertex="1">
+          <mxGeometry y="90" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-38" value="set_含める距離clusterとして" style="text;strokeColor=#d79b00;fillColor=#ffe6cc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-26" vertex="1">
+          <mxGeometry y="120" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-39" value="set_認識するドット数landmarkの" style="text;strokeColor=#d79b00;fillColor=#ffe6cc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-26" vertex="1">
+          <mxGeometry y="150" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-40" value="検出" style="rounded=0;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="-550" y="3437" width="320" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-41" value="カメラ設定（Droneカメラ）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=30;fontStyle=1;spacingLeft=10;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry y="1880" width="790" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-42" value="色" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="50" y="2980" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-43" value="歪み" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="50" y="3070" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-44" value="sfm用カメラの設定" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="290" y="3070" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-45" value="キャリブレーション用ボードを作った方がいいかも" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="170" y="2900" width="370" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-46" value="テスト&lt;br&gt;レイアウト崩壊が無いか&lt;br&gt;間違った数字が入力された際のエラーハンドリング" style="shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="910" y="3327" width="220" height="123" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-47" value="ドローン設定" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=30;fontStyle=1;spacingLeft=10;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry y="1654" width="430" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-48" value="カメラ設定（sfm）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=30;fontStyle=1;spacingLeft=10;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry y="2800" width="380" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-49" value="軌道設定" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=30;fontStyle=1;spacingLeft=10;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry y="4135" width="440" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-50" value="ペアリング" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="110" y="1750" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-51" value="LED制御設定" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="120" y="4330" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-52" value="3D Viewer で行う" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="30" y="4215" width="160" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-53" value="ウェイポイント設定" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="120" y="4430" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-54" value="Music" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="120" y="4519" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-55" value="ドローンのカメラキャリブレーションはドローン側のアプリで実行して、結果をコンフィグレーター送る？&lt;br&gt;&lt;br&gt;結果はドローン本体に保存しておく" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="70" y="1960" width="340" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-58" value="画像を読み込みconfgでsfm, フォトグラメトリまで実行する。" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="10" y="2200" width="370" height="69" as="geometry" />
+        </mxCell>
+        <mxCell id="YFMop7vAM7_NVG1Hs9CO-59" value="外部フォトグラメトリソフトの出力を読み込む" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
+          <mxGeometry x="10" y="2479" width="370" height="69" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
