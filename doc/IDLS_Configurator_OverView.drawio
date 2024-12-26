@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2024-12-26T08:28:51.979Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.0.3 Chrome/114.0.5735.289 Electron/25.8.4 Safari/537.36" etag="REfmMQ4H9S60YnTpxgsV" version="22.0.3" type="device" pages="6">
+<mxfile host="Electron" modified="2024-12-26T09:45:01.276Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.0.3 Chrome/114.0.5735.289 Electron/25.8.4 Safari/537.36" etag="4TkPNl1pDAdzODu_8Y5m" version="22.0.3" type="device" pages="6">
   <diagram name="概要" id="KyckfTdw7PnfaO1ii580">
-    <mxGraphModel dx="1015" dy="735" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+    <mxGraphModel dx="632" dy="720" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -20,7 +20,7 @@
     </mxGraphModel>
   </diagram>
   <diagram name="機能" id="WEIH03K0BKq-IK8hbyyO">
-    <mxGraphModel dx="2861" dy="1220" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+    <mxGraphModel dx="2975" dy="2057" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-0" />
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-1" parent="eVOCJrVsWdeTUgFKmBaz-0" />
@@ -273,6 +273,9 @@
         </mxCell>
         <mxCell id="YFMop7vAM7_NVG1Hs9CO-59" value="外部フォトグラメトリソフトの出力を読み込む" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
           <mxGeometry x="10" y="2479" width="370" height="69" as="geometry" />
+        </mxCell>
+        <mxCell id="tPBor7RYEC0Ct57AYgWX-1" value="" style="rounded=0;whiteSpace=wrap;html=1;movable=1;resizable=1;rotatable=1;deletable=1;editable=1;locked=0;connectable=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="-1120" y="2481" width="1040" height="720" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
