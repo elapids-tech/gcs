@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2024-12-26T09:45:01.276Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.0.3 Chrome/114.0.5735.289 Electron/25.8.4 Safari/537.36" etag="4TkPNl1pDAdzODu_8Y5m" version="22.0.3" type="device" pages="6">
+<mxfile host="Electron" modified="2024-12-27T01:46:14.890Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.0.3 Chrome/114.0.5735.289 Electron/25.8.4 Safari/537.36" etag="t6JZXiCSKICYkRgqIeQO" version="22.0.3" type="device" pages="6">
   <diagram name="概要" id="KyckfTdw7PnfaO1ii580">
-    <mxGraphModel dx="632" dy="720" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+    <mxGraphModel dx="1295" dy="720" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -20,7 +20,7 @@
     </mxGraphModel>
   </diagram>
   <diagram name="機能" id="WEIH03K0BKq-IK8hbyyO">
-    <mxGraphModel dx="2975" dy="2057" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+    <mxGraphModel dx="2362" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-0" />
         <mxCell id="eVOCJrVsWdeTUgFKmBaz-1" parent="eVOCJrVsWdeTUgFKmBaz-0" />
@@ -124,9 +124,6 @@
         <mxCell id="YFMop7vAM7_NVG1Hs9CO-2" value="&lt;h1&gt;&lt;font style=&quot;font-size: 20px;&quot;&gt;クラスター検出に必要なパラメータ（コンフィグレーター）&lt;/font&gt;&lt;/h1&gt;&lt;div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; // dot detection param&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; float min_dot_area_ = 10.0;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; float max_dot_area_ = 350.0;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; cv::Scalar lower_green_ = cv::Scalar(35, 100, 100); // H: 35, S: 100, V: 100&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; cv::Scalar upper_green_ = cv::Scalar(85, 255, 255); // H: 85, S: 255, V: 255&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; // landmark detection param&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; double include_gain_ = 1.5;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; int include_min_dot_num_ = 1;&amp;nbsp;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; int include_max_dot_num_ = 7;&amp;nbsp;&lt;/div&gt;&lt;/div&gt;" style="text;html=1;strokeColor=default;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
           <mxGeometry x="1431" y="3367" width="470" height="240" as="geometry" />
         </mxCell>
-        <mxCell id="YFMop7vAM7_NVG1Hs9CO-3" value="オリジナル" style="rounded=0;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
-          <mxGeometry x="-1040" y="3437" width="320" height="240" as="geometry" />
-        </mxCell>
         <mxCell id="YFMop7vAM7_NVG1Hs9CO-4" value="画像選択&lt;br&gt;・インポートしたsfm用の画像から&lt;b&gt;自動&lt;/b&gt;で選択&lt;br&gt;・インポートしたsfm用の画像から&lt;b&gt;手動&lt;/b&gt;で選択&lt;br&gt;・ローカルディレクトリから&lt;b&gt;手動&lt;/b&gt;で選択" style="rounded=0;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
           <mxGeometry x="480" y="3547" width="280" height="80" as="geometry" />
         </mxCell>
@@ -220,9 +217,6 @@
         <mxCell id="YFMop7vAM7_NVG1Hs9CO-39" value="set_認識するドット数landmarkの" style="text;strokeColor=#d79b00;fillColor=#ffe6cc;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontSize=12;" parent="YFMop7vAM7_NVG1Hs9CO-26" vertex="1">
           <mxGeometry y="150" width="200" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="YFMop7vAM7_NVG1Hs9CO-40" value="検出" style="rounded=0;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
-          <mxGeometry x="-550" y="3437" width="320" height="240" as="geometry" />
-        </mxCell>
         <mxCell id="YFMop7vAM7_NVG1Hs9CO-41" value="カメラ設定（Droneカメラ）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=30;fontStyle=1;spacingLeft=10;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
           <mxGeometry y="1880" width="790" height="80" as="geometry" />
         </mxCell>
@@ -274,8 +268,50 @@
         <mxCell id="YFMop7vAM7_NVG1Hs9CO-59" value="外部フォトグラメトリソフトの出力を読み込む" style="rounded=1;whiteSpace=wrap;html=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
           <mxGeometry x="10" y="2479" width="370" height="69" as="geometry" />
         </mxCell>
-        <mxCell id="tPBor7RYEC0Ct57AYgWX-1" value="" style="rounded=0;whiteSpace=wrap;html=1;movable=1;resizable=1;rotatable=1;deletable=1;editable=1;locked=0;connectable=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+        <mxCell id="tPBor7RYEC0Ct57AYgWX-1" value="" style="rounded=0;whiteSpace=wrap;html=1;movable=1;resizable=1;rotatable=1;deletable=1;editable=1;locked=0;connectable=1;" parent="eVOCJrVsWdeTUgFKmBaz-1" vertex="1">
           <mxGeometry x="-1120" y="2481" width="1040" height="720" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-0" value="画像選択&lt;br&gt;・インポートしたsfm用の画像から&lt;b&gt;自動&lt;/b&gt;で選択&lt;br&gt;・インポートしたsfm用の画像から&lt;b&gt;手動&lt;/b&gt;で選択&lt;br&gt;・ローカルディレクトリから&lt;b&gt;手動&lt;/b&gt;で選択" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="30" y="3557" width="280" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-1" value="ドット検出面積&lt;br&gt;スライドバー" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="50" y="3833" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-2" value="HSV選択&lt;br&gt;スライドバー" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="50" y="3763" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-3" value="インクルード半径&lt;br&gt;スライドバー？" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="50" y="3900" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-4" value="クラスター要素数&lt;br&gt;入力 +/-ボタン付き" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="50" y="3973" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-5" value="ランドマーク種類選択&lt;br&gt;プルダウンメニュー" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="50" y="3700" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-11" value="オリジナル" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="-1010" y="3562" width="110" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-12" value="処理１" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="-830" y="3552" width="110" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-21" value="表示非表示チェックボックス" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="-950" y="3430" width="650" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-22" value="処理２" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="-630" y="3557" width="110" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-23" value="処理３" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="-480" y="3554.5" width="110" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-24" value="処理４" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="-330" y="3567" width="110" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-25" value="処理５" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="-200" y="3557" width="110" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="fLR7OmeU9T_ja8zfK1ad-26" value="縦スクロールできるようにするが&lt;br&gt;無段階スクロールではなく、&lt;br&gt;クリック感を持たせる" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" vertex="1" parent="eVOCJrVsWdeTUgFKmBaz-1">
+          <mxGeometry x="-1120" y="3457" width="210" height="100" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
