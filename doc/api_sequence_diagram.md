@@ -35,6 +35,8 @@ sequenceDiagram
 ### set trajectory
 
 ## Drone Control
+### send heartbeat
+### read heartbeat
 ### start
 ### stop
 ### pause
