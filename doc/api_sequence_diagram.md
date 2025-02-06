@@ -28,10 +28,11 @@ sequenceDiagram
 
 ## Trajectory Editor
 ### register trajectory
+### set trajectory
 
 ## Drone Settings
 ### set pid
-
+### set detect dot parameter
 ### set trajectory
 
 ## Drone Control
