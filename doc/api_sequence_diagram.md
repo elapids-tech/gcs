@@ -8,6 +8,21 @@ sequenceDiagram
     participant Frontend
     participant Backend
 
+    User->>Frontend:パラメーターを入力
+    Frontend->>Backend:パラメータを登録
+    Backend->>Backend:チェック
+    Backend->>Backend:登録
+    Backend->>Frontend:結果
+    Frontend->>Frontend:結果表示
+```
+
+### register sfm camera parameter from json
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Backend
+
     User->>Frontend:jsonをアップロード
     Frontend->>Backend:パラメータを登録
     Backend->>Backend:チェック
@@ -15,6 +30,8 @@ sequenceDiagram
     Backend->>Frontend:結果
     Frontend->>Frontend:結果表示
 ```
+
+### export sfm camera parameter json
 
 ### register detect landmark camera parameter
 
