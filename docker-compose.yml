@@ -21,7 +21,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    # restart: always
     tty: true
     environment:
       NODE_ENV: development
@@ -41,17 +40,5 @@ volumes:
 
 networks:
   udp_network:
+    external: true
     name: udp_network
-      
-  # frontend:
-  #   build:
-  #     context: .
-  #     dockerfile: ./frontend/Dockerfile
-  #   container_name: idls_app_frontend
-  #   volumes:
-  #     - ./frontend:/idls_app/frontend
-  #   # command: sh -c "cd /idls_app/frontend && npm start"
-  #   command: sh -c "npm start"
-  #   ports:
-  #     - "3000:3000"
-  #   stdin_open: true
