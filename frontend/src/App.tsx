@@ -4,16 +4,33 @@ import { Canvas } from '@react-three/fiber'
 import { Grid, Line, GizmoHelper, GizmoViewport, OrbitControls, Environment, Sphere, Box } from '@react-three/drei'
 import Split from "react-split";
 import './styles.css';
-import ApexCharts from 'react-apexcharts';
+
+// === 型定義 ===
 
 type Landmarks = {
-  id:string;
+  id: string;
   x: number;
   y: number;
   z: number;
 };
 
-// Define a colormap with 6 colors
+type LineData = {
+  points: [number, number, number][];
+  color: string;
+};
+
+type DronePose = {
+  position: [number, number, number];
+  quaternion: [number, number, number, number];
+};
+
+type WebSocketMessage =
+  | { key: "setLandmarks"; value: Landmarks[] }
+  | { key: "dronePosUpdate"; value: LineData[] }
+  | { key: "dronePoseUpdate"; value: DronePose };
+
+// === 色マップ ===
+
 const colorMap: { [key: string]: string } = {
   "1": "red",
   "2": "blue",
@@ -23,66 +40,47 @@ const colorMap: { [key: string]: string } = {
   "6": "yellow",
 };
 
-// Function to get a color based on the ID
 const getColorForId = (id: number | string): string => {
-  const idStr = id.toString(); // Ensure the ID is a string
-  return colorMap[idStr] || "gray"; // Default to gray if the ID is not in the colormap
+  const idStr = id.toString();
+  return colorMap[idStr] || "gray";
 };
 
-type WebSocketMessage = 
-| { key: "setLandmarks"; value: Landmarks[] }
-| { key: "dronePosUpdate"; value: any };
+const Viewer3d: React.FC = () => {
+  const gridConfig = {
+    cellSize: 1,
+    cellThickness: 0.5,
+    sectionSize: 3,
+    sectionThickness: 1.5,
+    followCamera: true,
+    infiniteGrid: true
+  };
 
-type LineData = {
-  points: [number, number, number][];
-  color: string;
-};
-
-const Viewer3d = () => {
-  // grid init value
-  const gridConfig = { cellSize: 1, cellThickness: 0.5, sectionSize: 3, sectionThickness: 1.5, followCamera: true, infiniteGrid: true }; // Example grid config
-  const centerAxis = [
-    {
-      points: [0, 0, 0, 1, 0, 0], // [x1, y1, z1, x2, y2, z2] の形式
-      color: 'red'
-    },
-    {
-      points: [0, 0, 0, 0, 1, 0],
-      color: 'green'
-    },
-    {
-      points: [0, 0, 0, 0, 0, 1],
-      color: 'blue'
-    }
-  ];
-
-  // draw objects value
-  const [landmarks, setLandmarks] = useState<Landmarks[]>([]); 
+  const [landmarks, setLandmarks] = useState<Landmarks[]>([]);
   const [dronePos, setDronePos] = useState<LineData[]>([]);
-  
-  // websocket 
+  const [dronePose, setDronePose] = useState<DronePose | null>(null);
+
   useEffect(() => {
-    // create websocket
     const ws = new WebSocket('ws://localhost:8000/ws');
 
     ws.onopen = () => {
       console.log("WebSocket connection established");
     };
-  
-    // received message
+
     ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+      const data: WebSocketMessage = JSON.parse(event.data);
 
       switch (data.key) {
         case "setLandmarks":
           setLandmarks(data.value);
           break;
         case "dronePosUpdate":
-          // setDronePos([]); 
           setDronePos(data.value);
           break;
+        case "dronePoseUpdate":
+          setDronePose(data.value);
+          break;
         default:
-          console.warn(`Unknown key: ${data.key}`);
+          console.warn(`Unknown key: ${(data as any).key}`);
       }
     };
 
@@ -99,43 +97,90 @@ const Viewer3d = () => {
     };
   }, []);
 
-
   THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
+
+  // === ドローンの姿勢軸を生成 ===
+  const getDroneAxes = (position: [number, number, number], quaternion: [number, number, number, number]) => {
+    const pos = new THREE.Vector3(...position);
+    const quat = new THREE.Quaternion(...quaternion);
+    const length = 0.3;
+
+    const axes = [
+      { dir: new THREE.Vector3(1, 0, 0), color: 'red' },
+      { dir: new THREE.Vector3(0, 1, 0), color: 'green' },
+      { dir: new THREE.Vector3(0, 0, 1), color: 'blue' }
+    ];
+
+    return axes.map(({ dir, color }) => {
+      const to = dir.clone().applyQuaternion(quat).multiplyScalar(length).add(pos);
+      return {
+        points: [pos.toArray(), to.toArray()].flat(), // [x1, y1, z1, x2, y2, z2]
+        color
+      };
+    });
+  };
+
+  const centerAxis = [
+    {
+      points: [0, 0, 0, 1, 0, 0],
+      color: 'red'
+    },
+    {
+      points: [0, 0, 0, 0, 1, 0],
+      color: 'green'
+    },
+    {
+      points: [0, 0, 0, 0, 0, 1],
+      color: 'blue'
+    }
+  ];
+
   return (
     <Canvas className='left' camera={{ position: [10, 12, 12], fov: 25 }} style={{ border: "1px solid red" }}>
       <group position={[0, 0, 0]}>
-        <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]} args={[10, 10]} {...gridConfig} />  
+        {/* グリッド */}
+        <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]} args={[10, 10]} {...gridConfig} />
 
-        {landmarks.map((center) => {
-          console.log("Rendering Sphere at position:", center);
-          return (
-            <Sphere
-              key={center.id}
-              args={[0.03, 32, 32]}
-              position={[center.x, center.y, center.z]}
-            >
-              <meshStandardMaterial
-                attach="material"
-                color={getColorForId(center.id)}
-              />
-            </Sphere>
-          );
-        })}
-
+        {/* 世界座標中心軸 */}
         {centerAxis.map((line, index) => (
-          <Line key={index} points={line.points} color={line.color} lineWidth={2} />
+          <Line key={`center-axis-${index}`} points={line.points} color={line.color} lineWidth={2} />
         ))}
 
-        {dronePos?.map((line, index) => (
+        {/* ランドマーク */}
+        {landmarks.map((center) => (
+          <Sphere
+            key={center.id}
+            args={[0.03, 32, 32]}
+            position={[center.x, center.y, center.z]}
+          >
+            <meshStandardMaterial attach="material" color={getColorForId(center.id)} />
+          </Sphere>
+        ))}
+
+        {/* ドローンの移動軌跡 */}
+        {dronePos.map((line, index) => (
           <Line
-            key={index}
-            points={line.points}
+            key={`drone-path-${index}`}
+            points={line.points.flat()}
             color={line.color}
             lineWidth={2}
           />
         ))}
 
+        {/* ドローン姿勢のxyz軸 */}
+        {dronePose &&
+          getDroneAxes(dronePose.position, dronePose.quaternion).map((axis, index) => (
+            <Line
+              key={`drone-axis-${index}`}
+              points={axis.points}
+              color={axis.color}
+              lineWidth={2}
+            />
+          ))
+        }
       </group>
+
+      {/* カメラ操作 */}
       <OrbitControls makeDefault enableDamping={false} />
       <Environment preset="city" />
       <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
@@ -279,79 +324,12 @@ function R1() {
   );
 }
 
-const R2: React.FC = () => {
-  const [series, setSeries] = useState([{ data: [] as number[] }]);
-  const [time, setTime] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTime((prevTime) => prevTime + 0.1);
-      setSeries((prevSeries) => {
-        const newData = [...prevSeries[0].data, Math.sin(time / 10)];
-        if (newData.length > 30) newData.shift(); // 30ポイント以上のデータがある場合、古いデータを削除
-        return [{ data: newData }];
-      });
-    }, 1000); // 1秒ごとにデータを更新
-
-    return () => clearInterval(interval);
-  }, [time]);
-
-  const options: ApexCharts.ApexOptions = {
-    chart: {
-      id: 'realtime',
-      animations: {
-        enabled: true,
-        easing: 'linear', // 'linear'はApexChartsが受け入れる型の一つです
-        dynamicAnimation: {
-          speed: 1000,
-        },
-      },
-      toolbar: {
-        show: false,
-      },
-      zoom: {
-        enabled: false,
-      },
-    },
-    xaxis: {
-      type: 'numeric',
-      range: 30,
-    },
-    yaxis: {
-      max: 1,
-      min: -1,
-    },
-  };
-
+const App = () => {
   return (
-    <div className='chart' style={{ border: "1px solid red", height: '100%', overflowY: 'auto' }}>
-      <ApexCharts
-        options={options}
-        series={series}
-        type="line"
-        width="100%"
-        height="400"
-      />
+    <div className="app">
+      <R1/>
     </div>
   );
 };
-
-const App = () => {
-  return(
-    <div className="app">
-      <Split
-        direction="vertical"
-        sizes={[70, 30]}
-        minSize={100}
-        gutterSize={10}
-        gutterAlign="center"
-        style={{ height: '100vh' }}
-      >
-        <R1/>
-        <R2/>
-      </Split>
-    </div>
-  );
-}
 
 export default App;

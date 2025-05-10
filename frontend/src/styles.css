@@ -19,17 +19,12 @@ body,
 
 .R1 {
   flex: 1;
-  margin: 0px;
+  margin: 5px;
   padding: 0px;
-  background-color: #1c6ec0;
+  border-radius: 8px;
+  background-color: #fff;
   display: flex;
   flex-direction: row;
-}
-
-.R2 {
-  padding: 20px;
-  background-color: #bb1cc0;
-  height: 30%;
 }
 
 .top {
