@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 UDP_IP = "0.0.0.0"
 UDP_PORT = 5001
 
+heart_beat_sending_flag = 
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
@@ -85,10 +87,16 @@ async def upload_image(request: Request):
 
 @app.post("/start")
 def start():
+    
+    radio.send(arm)
+
     print('start pressed')
 
 @app.post("/stop")
 def stop():
+
+    radio.send(disarm)
+
     print('stop pressed')
 
 # --- UDP受信タスク ---
@@ -122,16 +130,12 @@ async def udp_receiver():
             print(f"UDP receive error: {type(e).__name__}: {e}")
             await asyncio.sleep(1)
 
-# --- WebSocketへ定期的に送信するタスク（20Hz） ---
-async def broadcast_drone_pose():
+async def send_heart_beat():
     while True:
-        await asyncio.sleep(0.05)
-        if project.drone_pose is not None:
-            message = {
-                "key": "dronePoseUpdate",
-                "value": project.drone_pose
-            }
-            await manager.broadcast(json.dumps(message))
+        await asyncio.sleep(1)
+        if heart_beat_sending_flag:
+
+            sock.sendto(packet, dest_addr)
 
 # --- サーバ起動時に並列実行 ---
 @app.on_event("startup")
