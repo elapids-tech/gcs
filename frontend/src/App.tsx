@@ -14,10 +14,9 @@ type Landmarks = {
   z: number;
 };
 
-type LineData = {
-  points: [number, number, number][];
-  color: string;
-};
+type DronePosition = {
+  position: [number, number, number];
+}
 
 type DronePose = {
   position: [number, number, number];
@@ -26,7 +25,7 @@ type DronePose = {
 
 type WebSocketMessage =
   | { key: "setLandmarks"; value: Landmarks[] }
-  | { key: "dronePosUpdate"; value: LineData[] }
+  | { key: "dronePositionUpdate"; value: DronePosition }
   | { key: "dronePoseUpdate"; value: DronePose };
 
 // === 色マップ ===
@@ -56,7 +55,7 @@ const Viewer3d: React.FC = () => {
   };
 
   const [landmarks, setLandmarks] = useState<Landmarks[]>([]);
-  const [dronePos, setDronePos] = useState<LineData[]>([]);
+  const [dronePosition, setDronePosition] = useState<DronePosition | null>(null);
   const [dronePose, setDronePose] = useState<DronePose | null>(null);
 
   useEffect(() => {
@@ -73,8 +72,8 @@ const Viewer3d: React.FC = () => {
         case "setLandmarks":
           setLandmarks(data.value);
           break;
-        case "dronePosUpdate":
-          setDronePos(data.value);
+        case "dronePositionUpdate":
+          setDronePosition(data.value);
           break;
         case "dronePoseUpdate":
           setDronePose(data.value);
@@ -155,16 +154,6 @@ const Viewer3d: React.FC = () => {
           >
             <meshStandardMaterial attach="material" color={getColorForId(center.id)} />
           </Sphere>
-        ))}
-
-        {/* ドローンの移動軌跡 */}
-        {dronePos.map((line, index) => (
-          <Line
-            key={`drone-path-${index}`}
-            points={line.points.flat()}
-            color={line.color}
-            lineWidth={2}
-          />
         ))}
 
         {/* ドローン姿勢のxyz軸 */}

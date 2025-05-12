@@ -3,7 +3,8 @@ import socket
 import asyncio
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from radio import *
+from contextlib import asynccontextmanager
+from radio import Radio
 
 class ConnectionManager:
     def __init__(self):
@@ -42,11 +43,21 @@ class ProjectManager:
 manager = ConnectionManager()
 project = ProjectManager()
 
-UDP_IP = "0.0.0.0"
+UDP_IP = "idls_app_backend"
 UDP_PORT = 5001
 radio = Radio(UDP_IP, UDP_PORT)
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    task2 = asyncio.create_task(broadcast_drone_pose())
+    
+    yield  # この yield の後に shutdown 処理を書くことができる
+
+    # Shutdown
+    task2.cancel()
+
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -87,61 +98,37 @@ async def upload_image(request: Request):
 
 @app.post("/start")
 def start():
-    radio.
-    radio.send_immediate("CONTROL_PACKET", )
-
+    radio.send_immediate("CONTROL_PACKET", "ARM")
     print('start pressed')
 
 @app.post("/stop")
 def stop():
-
-    radio.send(disarm)
-
+    radio.send_immediate("CONTROL_PACKET", "DISARM")
     print('stop pressed')
 
-# --- UDP受信タスク ---
-async def udp_receiver():
-    loop = asyncio.get_running_loop()
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((UDP_IP, UDP_PORT))
-    sock.setblocking(True)
-    print(f"UDP server listening on {UDP_IP}:{UDP_PORT}")
-
+async def broadcast_drone_pose():
     while True:
-        try:
-            data, addr = await loop.run_in_executor(None, sock.recvfrom, 4096)
-            message = data.decode('utf-8', errors='ignore')
+        await asyncio.sleep(0.0167)  # 60 FPS
+        type, data = radio.popRxBuffer()
+        print(type, data)
 
-            try:
-                json_data = json.loads(message)
-                print(f"Parsed JSON data:\n{json.dumps(json_data, indent=2)}")
+        if type == "DRONE_WORLD_POS":
+            message = {
+                "key": "dronePositionUpdate",
+                "value": data
+            }
+            await manager.broadcast(json.dumps(message))
 
-                # ↓ C++ 送信形式 { "pos": [...], "quat": [...] }
-                if "pos" in json_data and "quat" in json_data:
-                    project.drone_pose = {
-                        "position": json_data["pos"],
-                        "quaternion": json_data["quat"]
-                    }
+        elif type == "DRONE_WORLD_QUAT":
+            message = {
+                "key": "dronePoseUpdate",
+                "value": data
+            }
+            await manager.broadcast(json.dumps(message))
 
-            except json.JSONDecodeError:
-                print("Warning: Received data is not valid JSON")
-
-        except Exception as e:
-            print(f"UDP receive error: {type(e).__name__}: {e}")
-            await asyncio.sleep(1)
-
-async def send_heart_beat():
-    while True:
-        await asyncio.sleep(1)
-        if heart_beat_sending_flag:
-
-            sock.sendto(packet, dest_addr)
-
-# --- サーバ起動時に並列実行 ---
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(udp_receiver())
-    asyncio.create_task(broadcast_drone_pose())
+        else:
+            # 不明なタイプが来た場合のログ（必要に応じて削除可能）
+            print(f"Unknown message type received: {type}")
 
 if __name__ == '__main__':
     pass
