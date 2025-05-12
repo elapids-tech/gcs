@@ -3,11 +3,7 @@ import socket
 import asyncio
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-
-UDP_IP = "0.0.0.0"
-UDP_PORT = 5001
-
-heart_beat_sending_flag = 
+from radio import *
 
 class ConnectionManager:
     def __init__(self):
@@ -45,6 +41,10 @@ class ProjectManager:
 
 manager = ConnectionManager()
 project = ProjectManager()
+
+UDP_IP = "0.0.0.0"
+UDP_PORT = 5001
+radio = Radio(UDP_IP, UDP_PORT)
 
 app = FastAPI()
 app.add_middleware(
@@ -87,8 +87,8 @@ async def upload_image(request: Request):
 
 @app.post("/start")
 def start():
-    
-    radio.send(arm)
+    radio.
+    radio.send_immediate("CONTROL_PACKET", )
 
     print('start pressed')
 

@@ -1,37 +1,55 @@
 import socket
 import threading
-import asyncio
 import struct
+import time
 
-# uint8_t, uint32_t, 4 doubles, uint8_t
+# 受信パケット: type, timestamp, 4つのdouble, checksum
 RX_PACKET_FORMAT = "<B I dddd B"
 RX_PACKET_SIZE = struct.calcsize(RX_PACKET_FORMAT)
 receive_data_type = ["DRONE_WORLD_POS", "DRONE_WORLD_QUAT"]
 
-# uint8_t, uint32_t, 3 doubles, uint8_t
-TX_PACKET_FORMAT = "<B I ddd B"
-TX_PACKET_SIZE = struct.calcsize(TX_PACKET_FORMAT)
+# 送信種別（インデックスと一致）
 send_data_type = ["HEART_BEAT", "CONTROL_PACKET", "DATA_PACKET"]
+
+# 送信パケットフォーマット
+TX_CONTROL_PACKET_FORMAT = "<B I B B"  # type, timestamp, data, checksum
+TX_CONTROL_PACKET_SIZE = struct.calcsize(TX_CONTROL_PACKET_FORMAT)
+control_command = ["DISARM", "ARM", "TAKEOFF", "LAND", "GO_HOME", "SET_MODE"]
+
+TX_PACKET_FORMAT = "<B I ddd B"       # type, timestamp, 3 doubles, checksum
+TX_PACKET_SIZE = struct.calcsize(TX_PACKET_FORMAT)
+
 
 class Radio:
     def __init__(self, drone_ip="192.168.0.10", port=8889):
-
         self.drone_ip = drone_ip
         self.port = port
-        self.udp_socket = None
+        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_socket.connect((self.drone_ip, self.port))
 
-        self.is_running = False
-        self.heart_beat_sending_flag = False
-
-        self.rx_buffer = []
-        self.tx_buffer = []
-
-        self.udp_setup()
-
-        # スレッドを立ち上げる
-        self.thread = threading.Thread(target=self.send_heart_beat, daemon=True)
         self.is_running = True
-        self.thread.start()
+        self.heart_beat_sending_flag = True
+        self.rx_buffer = []
+
+        # スレッド起動
+        self.heartbeat_thread = threading.Thread(target=self.send_heart_beat, daemon=True)
+        self.receive_thread = threading.Thread(target=self.receive, daemon=True)
+        self.heartbeat_thread.start()
+        self.receive_thread.start()
+
+    def __del__(self):
+        self.shutdown()
+
+    def shutdown(self):
+        self.is_running = False
+        try:
+            self.udp_socket.close()
+        except:
+            pass
+        if self.heartbeat_thread.is_alive():
+            self.heartbeat_thread.join(timeout=1)
+        if self.receive_thread.is_alive():
+            self.receive_thread.join(timeout=1)
 
     def calculate_checksum(self, data_bytes):
         checksum = 0
@@ -39,61 +57,68 @@ class Radio:
             checksum ^= b
         return checksum
 
-    def udp_setup(self):
-
-        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_socket.connect((self.drone_ip, self.port))
-
-        self.is_running = True
-        self.heart_beat_sending_flag = True
-
-    async def send_heart_beat(self):
+    def send_heart_beat(self):
         while self.is_running:
-            await asyncio.sleep(1)
+            time.sleep(1)
             if self.heart_beat_sending_flag:
-                index = send_data_type.index("HEART_BEAT")
-                # 'B' は unsigned char = uint8_t
-                packed_index = struct.pack('B', index)
+                type_index = send_data_type.index("HEART_BEAT")
+                try:
+                    # HEART_BEATは簡易パケット: typeのみ送信
+                    packet = struct.pack("B", type_index)
+                    self.udp_socket.sendto(packet, (self.drone_ip, self.port))
+                except:
+                    pass
 
-                # UDP送信
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.sendto(packed_index, ('127.0.0.1', 5005)) 
-
-    async def receive(self):
+    def receive(self):
         while self.is_running:
-            data, addr = sock.recvfrom(1024)
-            if len(data) >= TX_PACKET_SIZE:
-                raw = data[:-1]
-                received_checksum = data[-1]
-                calc_checksum = self.calculate_checksum(raw)
-                if received_checksum == calc_checksum:
-                    unpacked = struct.unpack(TX_PACKET_FORMAT, data)
-                    self.rx_buffer.append(unpacked)
+            try:
+                data, _ = self.udp_socket.recvfrom(1024)
+                if len(data) == RX_PACKET_SIZE:
+                    raw = data[:-1]
+                    checksum = data[-1]
+                    if self.calculate_checksum(raw) == checksum:
+                        unpacked = struct.unpack(RX_PACKET_FORMAT, data)
+                        self.rx_buffer.append(unpacked)
+            except:
+                break  # socket closed or error
 
     def popRxBuffer(self):
+        if not self.rx_buffer:
+            return None, None
+        unpacked = self.rx_buffer.pop(0)
+        data_type = receive_data_type[unpacked[0]] if unpacked[0] < len(receive_data_type) else "UNKNOWN"
+        data = unpacked[2:6]  # 4つのdouble
+        return data_type, data
 
-        # self.rx_bufferからfifoで値を取得
+    def send_immediate(self, data_type_str, data):
+        if data_type_str not in send_data_type or data_type_str == "HEART_BEAT":
+            # HEART_BEATは send_heart_beat に任せる
+            return False
 
-        unpacked = struct.unpack(TX_PACKET_FORMAT, data)
+        type_index = send_data_type.index(data_type_str)
+        timestamp = int(time.time() * 1000)
 
-        data_type = unpacked[0]
-        [unpacked[2], unpacked[3], unpacked[4], unpacked[5]]
+        try:
+            if data_type_str == "CONTROL_PACKET":
+                # data: 1つの uint8_t
+                assert isinstance(data, int) and 0 <= data <= 255
+                packed = struct.pack(TX_CONTROL_PACKET_FORMAT[:-1], type_index, timestamp, data)
+                checksum = self.calculate_checksum(packed)
+                packet = packed + struct.pack('B', checksum)
 
-        return type, data
+            elif data_type_str == "DATA_PACKET":
+                # data: 3つの double
+                assert isinstance(data, (list, tuple)) and len(data) == 3
+                packed = struct.pack(TX_PACKET_FORMAT[:-1], type_index, timestamp, *data)
+                checksum = self.calculate_checksum(packed)
+                packet = packed + struct.pack('B', checksum)
 
-    def send_immediate(self, type, data):
-        # 
-        # type is uint8_t
+            else:
+                return False
 
-        # get current time 
-        time_stamp = 
+            self.udp_socket.sendto(packet, (self.drone_ip, self.port))
+            return True
 
-        checksum = self.calculate_checksum()
-
-        send_packet = 
-        sock.sendto(send_packet, dest_addr)
-
-        # 成功したらtrue
-
-        # 失敗したらfalse
-
+        except Exception as e:
+            print(f"[send_immediate] Send failed: {e}")
+            return False
