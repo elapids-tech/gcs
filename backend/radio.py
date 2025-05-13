@@ -82,6 +82,7 @@ class Radio:
                     if self.calculate_checksum(raw) == checksum:
                         unpacked = struct.unpack(RX_PACKET_FORMAT, data)
                         self.rx_buffer.append(unpacked)
+
             except Exception as e:
                 print(f"[receive] Error: {e}")
                 break

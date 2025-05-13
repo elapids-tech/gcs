@@ -14,10 +14,6 @@ type Landmarks = {
   z: number;
 };
 
-type DronePosition = {
-  position: [number, number, number];
-}
-
 type DronePose = {
   position: [number, number, number];
   quaternion: [number, number, number, number];
@@ -25,7 +21,6 @@ type DronePose = {
 
 type WebSocketMessage =
   | { key: "setLandmarks"; value: Landmarks[] }
-  | { key: "dronePositionUpdate"; value: DronePosition }
   | { key: "dronePoseUpdate"; value: DronePose };
 
 // === 色マップ ===
@@ -55,7 +50,6 @@ const Viewer3d: React.FC = () => {
   };
 
   const [landmarks, setLandmarks] = useState<Landmarks[]>([]);
-  const [dronePosition, setDronePosition] = useState<DronePosition | null>(null);
   const [dronePose, setDronePose] = useState<DronePose | null>(null);
 
   useEffect(() => {
@@ -71,9 +65,6 @@ const Viewer3d: React.FC = () => {
       switch (data.key) {
         case "setLandmarks":
           setLandmarks(data.value);
-          break;
-        case "dronePositionUpdate":
-          setDronePosition(data.value);
           break;
         case "dronePoseUpdate":
           setDronePose(data.value);
