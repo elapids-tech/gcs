@@ -100,7 +100,7 @@ class Radio:
             return False
 
         type_index = send_data_type.index(data_type_str)
-        timestamp = int(time.time() * 1000)
+        timestamp = int(time.time() * 1000) & 0xFFFFFFFF
 
         try:
             if data_type_str == "CONTROL_PACKET":

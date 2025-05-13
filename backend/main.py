@@ -92,12 +92,12 @@ async def upload_image(request: Request):
 
 @app.post("/start")
 def start():
-    radio.send_immediate("CONTROL_PACKET", "ARM")
+    radio.send_immediate("CONTROL_PACKET", 1)
     print('start pressed')
 
 @app.post("/stop")
 def stop():
-    radio.send_immediate("CONTROL_PACKET", "DISARM")
+    radio.send_immediate("CONTROL_PACKET", 0)
     print('stop pressed')
 
 async def broadcast_drone_pose():
