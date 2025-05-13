@@ -21,17 +21,19 @@ TX_PACKET_SIZE = struct.calcsize(TX_PACKET_FORMAT)
 
 
 class Radio:
-    def __init__(self, drone_ip="192.168.0.10", port=8889):
-        self.drone_ip = drone_ip
-        self.port = port
+    def __init__(self, recv_ip="0.0.0.0", recv_port=5001, send_ip="drone", send_port=5000):
+        self.recv_ip = recv_ip
+        self.recv_port = recv_port
+        self.send_ip = send_ip
+        self.send_port = send_port
+
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_socket.connect((self.drone_ip, self.port))
+        self.udp_socket.bind((self.recv_ip, self.recv_port))
 
         self.is_running = True
         self.heart_beat_sending_flag = True
         self.rx_buffer = []
 
-        # スレッド起動
         self.heartbeat_thread = threading.Thread(target=self.send_heart_beat, daemon=True)
         self.receive_thread = threading.Thread(target=self.receive, daemon=True)
         self.heartbeat_thread.start()
@@ -63,24 +65,26 @@ class Radio:
             if self.heart_beat_sending_flag:
                 type_index = send_data_type.index("HEART_BEAT")
                 try:
-                    # HEART_BEATは簡易パケット: typeのみ送信
                     packet = struct.pack("B", type_index)
-                    self.udp_socket.sendto(packet, (self.drone_ip, self.port))
-                except:
-                    pass
+                    self.udp_socket.sendto(packet, (self.send_ip, self.send_port))
+                except Exception as e:
+                    print(f"[send_heart_beat] Error: {e}")
 
     def receive(self):
         while self.is_running:
             try:
-                data, _ = self.udp_socket.recvfrom(1024)
+                data, addr = self.udp_socket.recvfrom(1024)
+                print(f"[recv] from {addr}, size={len(data)}")
+
                 if len(data) == RX_PACKET_SIZE:
                     raw = data[:-1]
                     checksum = data[-1]
                     if self.calculate_checksum(raw) == checksum:
                         unpacked = struct.unpack(RX_PACKET_FORMAT, data)
                         self.rx_buffer.append(unpacked)
-            except:
-                break  # socket closed or error
+            except Exception as e:
+                print(f"[receive] Error: {e}")
+                break
 
     def popRxBuffer(self):
         if not self.rx_buffer:
@@ -92,7 +96,6 @@ class Radio:
 
     def send_immediate(self, data_type_str, data):
         if data_type_str not in send_data_type or data_type_str == "HEART_BEAT":
-            # HEART_BEATは send_heart_beat に任せる
             return False
 
         type_index = send_data_type.index(data_type_str)
@@ -100,14 +103,12 @@ class Radio:
 
         try:
             if data_type_str == "CONTROL_PACKET":
-                # data: 1つの uint8_t
                 assert isinstance(data, int) and 0 <= data <= 255
                 packed = struct.pack(TX_CONTROL_PACKET_FORMAT[:-1], type_index, timestamp, data)
                 checksum = self.calculate_checksum(packed)
                 packet = packed + struct.pack('B', checksum)
 
             elif data_type_str == "DATA_PACKET":
-                # data: 3つの double
                 assert isinstance(data, (list, tuple)) and len(data) == 3
                 packed = struct.pack(TX_PACKET_FORMAT[:-1], type_index, timestamp, *data)
                 checksum = self.calculate_checksum(packed)
@@ -116,7 +117,7 @@ class Radio:
             else:
                 return False
 
-            self.udp_socket.sendto(packet, (self.drone_ip, self.port))
+            self.udp_socket.sendto(packet, (self.send_ip, self.send_port))
             return True
 
         except Exception as e:

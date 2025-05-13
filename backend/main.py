@@ -43,9 +43,9 @@ class ProjectManager:
 manager = ConnectionManager()
 project = ProjectManager()
 
-UDP_IP = "idls_app_backend"
-UDP_PORT = 5001
-radio = Radio(UDP_IP, UDP_PORT)
+# drone からの UDP を5001番で受信し、5000番に送信する
+radio = Radio(recv_ip="idls_app_backend", recv_port=5001, 
+              send_ip="drone", send_port=5000)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -110,7 +110,6 @@ async def broadcast_drone_pose():
     while True:
         await asyncio.sleep(0.0167)  # 60 FPS
         type, data = radio.popRxBuffer()
-        print(type, data)
 
         if type == "DRONE_WORLD_POS":
             message = {
@@ -125,10 +124,6 @@ async def broadcast_drone_pose():
                 "value": data
             }
             await manager.broadcast(json.dumps(message))
-
-        else:
-            # 不明なタイプが来た場合のログ（必要に応じて削除可能）
-            print(f"Unknown message type received: {type}")
 
 if __name__ == '__main__':
     pass
