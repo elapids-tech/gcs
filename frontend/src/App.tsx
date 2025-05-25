@@ -177,6 +177,12 @@ const DroneControlPanel: React.FC = () => {
   const containerRef = useRef(null);
   const [containerHeight, setContainerHeight] = useState(0);
 
+  // Setpoint用 state
+  const [x, setX] = useState('');
+  const [y, setY] = useState('');
+  const [z, setZ] = useState('');
+  const [yaw, setYaw] = useState('');
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     console.log('handleFileChange')
     if (event.target.files && event.target.files[0]) {
@@ -245,6 +251,24 @@ const DroneControlPanel: React.FC = () => {
     .catch(error => console.error('Error:', error));
   };
 
+  const handleClickSetpoint = () => {
+    const payload = {
+      x: parseFloat(x),
+      y: parseFloat(y),
+      z: parseFloat(z),
+      yaw: parseFloat(yaw),
+    };
+
+    fetch('http://localhost:8000/setpoint', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(res => res.json())
+      .then(data => console.log(data))
+      .catch(err => console.error('Error:', err));
+  };
+
   useEffect(() => {
     const resizeObserver = new ResizeObserver(entries => {
       for (let entry of entries) {
@@ -297,6 +321,22 @@ const DroneControlPanel: React.FC = () => {
           <button onClick={handleClickStart}>Start</button>
           <button onClick={handleClickStop}>Stop</button>
 
+          <h2>Setpoint</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '200px' }}>
+            <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
+              X:<input type="number" value={x} onChange={(e) => setX(e.target.value)} style={{ width: '100px', margin: 0 }} />
+            </label>
+            <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
+              Y:<input type="number" value={y} onChange={(e) => setY(e.target.value)} style={{ width: '100px', margin: 0 }} />
+            </label>
+            <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
+              Z:<input type="number" value={z} onChange={(e) => setZ(e.target.value)} style={{ width: '100px', margin: 0 }} />
+            </label>
+            <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
+              Yaw:<input type="number" value={yaw} onChange={(e) => setYaw(e.target.value)} style={{ width: '100px', margin: 0 }} />
+            </label>
+            <button onClick={handleClickSetpoint} style={{ padding: '4px 8px', margin: '4px 0 0 0' }}>Set</button>
+          </div>
         </div>
       </div>
     </div>
