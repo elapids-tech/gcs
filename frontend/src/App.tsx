@@ -170,7 +170,7 @@ const Viewer3d: React.FC = () => {
   );
 };
 
-const ProjectManagementPanel: React.FC = () => {
+const DroneControlPanel: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filePath, setFilePath] = useState('');
   const [fileContent, setFileContent] = useState('');
@@ -207,6 +207,24 @@ const ProjectManagementPanel: React.FC = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
+  };
+
+  const handleClickArm = () => {
+    fetch('http://localhost:8000/arm', {
+      method: 'POST',
+    })
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+  };
+
+  const handleClickDisarm = () => {
+    fetch('http://localhost:8000/disarm', {
+      method: 'POST',
+    })
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
   };
 
   const handleClickStart = () => {
@@ -274,6 +292,8 @@ const ProjectManagementPanel: React.FC = () => {
           <p>選択された画像ファイルをリストで表示したい:</p>
           <p>{filePath}</p>
 
+          <button onClick={handleClickArm}>Arm</button>
+          <button onClick={handleClickDisarm}>Disarm</button>
           <button onClick={handleClickStart}>Start</button>
           <button onClick={handleClickStop}>Stop</button>
 
@@ -298,7 +318,7 @@ function R1() {
         direction="horizontal"
         cursor="col-resize">
         <Viewer3d />
-        <ProjectManagementPanel />
+        <DroneControlPanel />
       </Split>
     </div>
   );

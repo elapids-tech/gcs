@@ -90,6 +90,16 @@ async def upload_file(request: Request):
 async def upload_image(request: Request):
     pass
 
+@app.post("/arm")
+def arm():
+    radio.send_immediate("CONTROL_PACKET", 1)
+    print('arm pressed')
+
+@app.post("/disarm")
+def disarm():
+    radio.send_immediate("CONTROL_PACKET", 0)
+    print('disarm pressed')
+
 @app.post("/start")
 def start():
     radio.send_immediate("CONTROL_PACKET", 1)
