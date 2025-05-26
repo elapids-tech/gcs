@@ -53,7 +53,7 @@ const Viewer3d: React.FC = () => {
   const [dronePose, setDronePose] = useState<DronePose | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws');
+    const ws = new WebSocket('ws://localhost:8003/ws');
 
     ws.onopen = () => {
       console.log("WebSocket connection established");
@@ -172,6 +172,7 @@ const Viewer3d: React.FC = () => {
 
 const DroneControlPanel: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null); // 追加：Add Image専用
   const [filePath, setFilePath] = useState('');
   const [fileContent, setFileContent] = useState('');
   const containerRef = useRef(null);
@@ -184,15 +185,14 @@ const DroneControlPanel: React.FC = () => {
   const [yaw, setYaw] = useState('');
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('handleFileChange')
+    console.log('handleFileChange');
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
       const text = await file.text();
       setFilePath(file.name);
       setFileContent(text);
 
-      // ファイル読み込みが完了した後にfetchを呼び出す
-      const response = await fetch('http://localhost:8000/upload/', {
+      const response = await fetch('http://localhost:8003/upload/', {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: text,
@@ -210,45 +210,45 @@ const DroneControlPanel: React.FC = () => {
   };
 
   const LoadImage = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+    if (imageInputRef.current) {
+      imageInputRef.current.click();
     }
   };
 
   const handleClickArm = () => {
-    fetch('http://localhost:8000/arm', {
+    fetch('http://localhost:8003/arm', {
       method: 'POST',
     })
-    .then(response => response.json())
-    .then(data => console.log(data))
-    .catch(error => console.error('Error:', error));
+      .then(response => response.json())
+      .then(data => console.log(data))
+      .catch(error => console.error('Error:', error));
   };
 
   const handleClickDisarm = () => {
-    fetch('http://localhost:8000/disarm', {
+    fetch('http://localhost:8003/disarm', {
       method: 'POST',
     })
-    .then(response => response.json())
-    .then(data => console.log(data))
-    .catch(error => console.error('Error:', error));
+      .then(response => response.json())
+      .then(data => console.log(data))
+      .catch(error => console.error('Error:', error));
   };
 
   const handleClickStart = () => {
-    fetch('http://localhost:8000/start', {
+    fetch('http://localhost:8003/start', {
       method: 'POST',
     })
-    .then(response => response.json())
-    .then(data => console.log(data))
-    .catch(error => console.error('Error:', error));
+      .then(response => response.json())
+      .then(data => console.log(data))
+      .catch(error => console.error('Error:', error));
   };
 
   const handleClickStop = () => {
-    fetch('http://localhost:8000/stop', {
+    fetch('http://localhost:8003/stop', {
       method: 'POST',
     })
-    .then(response => response.json())
-    .then(data => console.log(data))
-    .catch(error => console.error('Error:', error));
+      .then(response => response.json())
+      .then(data => console.log(data))
+      .catch(error => console.error('Error:', error));
   };
 
   const handleClickSetpoint = () => {
@@ -256,10 +256,10 @@ const DroneControlPanel: React.FC = () => {
       x: parseFloat(x),
       y: parseFloat(y),
       z: parseFloat(z),
-      yaw: parseFloat(yaw),
+      yaw_deg: parseFloat(yaw), // FastAPI側に合わせて yaw_deg に変更
     };
 
-    fetch('http://localhost:8000/setpoint', {
+    fetch('http://localhost:8003/set-setpoint', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -308,7 +308,7 @@ const DroneControlPanel: React.FC = () => {
           <button onClick={LoadImage}>Add Image</button>
           <input 
             type="file" 
-            ref={fileInputRef} 
+            ref={imageInputRef} 
             style={{ display: 'none' }} 
             onChange={handleFileChange} 
             accept=".json"

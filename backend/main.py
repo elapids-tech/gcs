@@ -1,9 +1,11 @@
 import json
 import socket
 import asyncio
+from pydantic import BaseModel
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from radio import Radio
+from radio import DroneController
 
 class ConnectionManager:
     def __init__(self):
@@ -39,11 +41,20 @@ class ProjectManager:
             "quaternion": quaternion
         }
 
+class DroneState:
+    def __init__(self):
+        self.position = [0.0, 0.0, 0.0]
+        self.quaternion = [0.0, 0.0, 0.0, 1.0]
+
+class Setpoint(BaseModel):
+    x: float
+    y: float
+    z: float
+    yaw_deg: float
+
 manager = ConnectionManager()
 project = ProjectManager()
-
-radio = Radio(recv_ip="idls_app_backend", recv_port=5001, 
-              send_ip="drone", send_port=5000)
+drone_ctl = DroneController()
 
 app = FastAPI()
 
@@ -57,8 +68,9 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(broadcast_drone_pose())
-    print("[startup] broadcast_drone_pose task started")
+    drone_ctl.start()
+    asyncio.create_task(periodic_task())
+    print("[startup] periodic_task started.")
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -92,49 +104,52 @@ async def upload_image(request: Request):
 
 @app.post("/arm")
 def arm():
-    radio.send_immediate("CONTROL_PACKET", 1)
     print('arm pressed')
+    drone_ctl.set_arm(True)
 
 @app.post("/disarm")
 def disarm():
-    radio.send_immediate("CONTROL_PACKET", 0)
     print('disarm pressed')
+    drone_ctl.set_arm(False)
+
+@app.post("/set-setpoint")
+def set_setpoint(setpoint: Setpoint):
+    print("=== /set-setpoint endpoint called ===")
+    print(f"Received setpoint:")
+    print(f"  x       = {setpoint.x}")
+    print(f"  y       = {setpoint.y}")
+    print(f"  z       = {setpoint.z}")
+    print(f"  yaw_deg = {setpoint.yaw_deg}")
+
+    drone_ctl.send_guided_position(setpoint.x, setpoint.y, setpoint.z, setpoint.yaw_deg)
+    print("Sent setpoint to drone_ctl.\n")
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": "Setpoint command sent to drone."}
+    )
 
 @app.post("/start")
 def start():
-    radio.send_immediate("CONTROL_PACKET", 1)
     print('start pressed')
 
 @app.post("/stop")
 def stop():
-    radio.send_immediate("CONTROL_PACKET", 0)
     print('stop pressed')
 
-async def broadcast_drone_pose():
-    position = [0.0, 0.0, 0.0]
-    quaternion = [0.0, 0.0, 0.0, 1.0]
-
+async def periodic_task():
     while True:
         await asyncio.sleep(0.0167)  # 60 FPS
 
-        type, data = radio.popRxBuffer()
-        if type == "DRONE_WORLD_POS":
-            position = data[0:3]
+        
 
-        elif type == "DRONE_WORLD_QUAT":
-            quaternion = data[0:4]
+        # control（無線）クラスから受信したデータを内部クラスに格納
 
-        drone_pose = {
-            "position": position,
-            "quaternion": quaternion
-        }
+        # control（無線）クラスから受信したデータをフロントエンドに送信する
 
-        message = {
-            "key": "dronePoseUpdate",
-            "value": drone_pose
-        }
-        await manager.broadcast(json.dumps(message))
-
+@app.on_event("shutdown")
+async def shutdown_event():
+    drone_ctl.stop()
 
 if __name__ == '__main__':
     pass
