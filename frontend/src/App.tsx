@@ -171,10 +171,6 @@ const Viewer3d: React.FC = () => {
 };
 
 const DroneControlPanel: React.FC = () => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null); // 追加：Add Image専用
-  const [filePath, setFilePath] = useState('');
-  const [fileContent, setFileContent] = useState('');
   const containerRef = useRef(null);
   const [containerHeight, setContainerHeight] = useState(0);
 
@@ -183,37 +179,6 @@ const DroneControlPanel: React.FC = () => {
   const [y, setY] = useState('');
   const [z, setZ] = useState('');
   const [yaw, setYaw] = useState('');
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('handleFileChange');
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      const text = await file.text();
-      setFilePath(file.name);
-      setFileContent(text);
-
-      const response = await fetch('http://localhost:8003/upload/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: text,
-      });
-
-      const result = await response.json();
-      console.log(result);
-    }
-  };
-
-  const LoadClusters = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const LoadImage = () => {
-    if (imageInputRef.current) {
-      imageInputRef.current.click();
-    }
-  };
 
   const handleClickArm = () => {
     fetch('http://localhost:8003/arm', {
@@ -226,6 +191,24 @@ const DroneControlPanel: React.FC = () => {
 
   const handleClickDisarm = () => {
     fetch('http://localhost:8003/disarm', {
+      method: 'POST',
+    })
+      .then(response => response.json())
+      .then(data => console.log(data))
+      .catch(error => console.error('Error:', error));
+  };
+
+  const handleClickGuideMode = () => {
+    fetch('http://localhost:8003/guide', {
+      method: 'POST',
+    })
+      .then(response => response.json())
+      .then(data => console.log(data))
+      .catch(error => console.error('Error:', error));
+  };
+
+  const handleClickAutoMode = () => {
+    fetch('http://localhost:8003/auto', {
       method: 'POST',
     })
       .then(response => response.json())
@@ -292,34 +275,13 @@ const DroneControlPanel: React.FC = () => {
   return (
     <div className='right' style={{ border: "1px solid red", height: '100%', overflowY: 'auto'}}>
       <div style={{ minHeight: containerHeight + 100 }}>
-        <h1>Project</h1>
         <div className='bottons-column'>
-          <button onClick={LoadClusters}>Load Clusters</button>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            style={{ display: 'none' }} 
-            onChange={handleFileChange} 
-            accept=".json"
-          />
-          <p>選択されたファイルのパス:</p>
-          <p>{filePath}</p>
 
-          <button onClick={LoadImage}>Add Image</button>
-          <input 
-            type="file" 
-            ref={imageInputRef} 
-            style={{ display: 'none' }} 
-            onChange={handleFileChange} 
-            accept=".json"
-          />
-          <p>選択された画像ファイルをリストで表示したい:</p>
-          <p>{filePath}</p>
-
+          <h2>Control</h2>
           <button onClick={handleClickArm}>Arm</button>
           <button onClick={handleClickDisarm}>Disarm</button>
-          <button onClick={handleClickStart}>Start</button>
-          <button onClick={handleClickStop}>Stop</button>
+          <button onClick={handleClickGuideMode}>Guide Mode</button>
+          <button onClick={handleClickAutoMode}>Auto Mode</button>
 
           <h2>Setpoint</h2>
           <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '200px' }}>
@@ -337,6 +299,10 @@ const DroneControlPanel: React.FC = () => {
             </label>
             <button onClick={handleClickSetpoint} style={{ padding: '4px 8px', margin: '4px 0 0 0' }}>Set</button>
           </div>
+
+          <h2>No function</h2>
+          <button onClick={handleClickStart}>Start</button>
+          <button onClick={handleClickStop}>Stop</button>
         </div>
       </div>
     </div>

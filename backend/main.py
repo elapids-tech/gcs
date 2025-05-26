@@ -112,6 +112,16 @@ def disarm():
     print('disarm pressed')
     drone_ctl.set_arm(False)
 
+@app.post("/guide")
+def set_guide_mode():
+    print('guide pressed')
+    drone_ctl.set_mode('GUIDED')
+
+@app.post("/auto")
+def set_auto_mode():
+    print('auto pressed')
+    drone_ctl.set_mode('AUTO')
+
 @app.post("/set-setpoint")
 def set_setpoint(setpoint: Setpoint):
     print("=== /set-setpoint endpoint called ===")
