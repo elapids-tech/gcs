@@ -1,126 +1,134 @@
-import socket
+from pymavlink import mavutil
 import threading
-import struct
 import time
+import math
 
-# 受信パケット: type, timestamp, 4つのdouble, checksum
-RX_PACKET_FORMAT = "<B I dddd B"
-RX_PACKET_SIZE = struct.calcsize(RX_PACKET_FORMAT)
-receive_data_type = ["DRONE_WORLD_POS", "DRONE_WORLD_QUAT"]
+class DroneController:
+    def __init__(self, connection_string='udpout:127.0.0.1:14551', source_system=255):
+        self.master = mavutil.mavlink_connection(connection_string, source_system=source_system)
+        self.target_system = None
+        self.target_component = 1
+        self.start_time = time.monotonic()
 
-# 送信種別（インデックスと一致）
-send_data_type = ["HEART_BEAT", "CONTROL_PACKET", "DATA_PACKET"]
+        self._running = threading.Event()
+        self._running.set()
 
-# 送信パケットフォーマット
-TX_CONTROL_PACKET_FORMAT = "<B I B B"  # type, timestamp, data, checksum
-TX_CONTROL_PACKET_SIZE = struct.calcsize(TX_CONTROL_PACKET_FORMAT)
-control_command = ["DISARM", "ARM", "TAKEOFF", "LAND", "GO_HOME", "SET_MODE"]
+        self._heartbeat_thread = threading.Thread(target=self._send_heartbeat_loop, daemon=True)
+        self._listen_thread = threading.Thread(target=self._listen_loop, daemon=True)
 
-TX_PACKET_FORMAT = "<B I ddd B"       # type, timestamp, 3 doubles, checksum
-TX_PACKET_SIZE = struct.calcsize(TX_PACKET_FORMAT)
+    def start(self):
+        self._heartbeat_thread.start()
+        self._listen_thread.start()
 
+    def stop(self):
+        self._running.clear()
+        self._heartbeat_thread.join(timeout=2)
+        self._listen_thread.join(timeout=2)
 
-class Radio:
-    def __init__(self, recv_ip="0.0.0.0", recv_port=5001, send_ip="drone", send_port=5000):
-        self.recv_ip = recv_ip
-        self.recv_port = recv_port
-        self.send_ip = send_ip
-        self.send_port = send_port
-
-        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_socket.bind((self.recv_ip, self.recv_port))
-
-        self.is_running = True
-        self.heart_beat_sending_flag = True
-        self.rx_buffer = []
-
-        self.heartbeat_thread = threading.Thread(target=self.send_heart_beat, daemon=True)
-        self.receive_thread = threading.Thread(target=self.receive, daemon=True)
-        self.heartbeat_thread.start()
-        self.receive_thread.start()
-
-    def __del__(self):
-        self.shutdown()
-
-    def shutdown(self):
-        self.is_running = False
-        try:
-            self.udp_socket.close()
-        except:
-            pass
-        if self.heartbeat_thread.is_alive():
-            self.heartbeat_thread.join(timeout=1)
-        if self.receive_thread.is_alive():
-            self.receive_thread.join(timeout=1)
-
-    def calculate_checksum(self, data_bytes):
-        checksum = 0
-        for b in data_bytes:
-            checksum ^= b
-        return checksum
-
-    def send_heart_beat(self):
-        while self.is_running:
+    def _send_heartbeat_loop(self):
+        while self._running.is_set():
+            self.master.mav.heartbeat_send(
+                mavutil.mavlink.MAV_TYPE_GCS,
+                mavutil.mavlink.MAV_AUTOPILOT_INVALID,
+                0, 0,
+                mavutil.mavlink.MAV_STATE_ACTIVE
+            )
             time.sleep(1)
-            if self.heart_beat_sending_flag:
-                type_index = send_data_type.index("HEART_BEAT")
-                try:
-                    packet = struct.pack("B", type_index)
-                    self.udp_socket.sendto(packet, (self.send_ip, self.send_port))
-                except Exception as e:
-                    print(f"[send_heart_beat] Error: {e}")
 
-    def receive(self):
-        while self.is_running:
-            try:
-                data, addr = self.udp_socket.recvfrom(1024)
-                print(f"[recv] from {addr}, size={len(data)}")
+    def _listen_loop(self):
+        while self._running.is_set():
+            msg = self.master.recv_match(blocking=True, timeout=1)
+            if msg and msg.get_type() == 'HEARTBEAT':
+                sysid = msg.get_srcSystem()
+                if self.target_system is None:
+                    self.target_system = sysid
+                print(f"[Python] Received HEARTBEAT from sysid={sysid}")
 
-                if len(data) == RX_PACKET_SIZE:
-                    raw = data[:-1]
-                    checksum = data[-1]
-                    if self.calculate_checksum(raw) == checksum:
-                        unpacked = struct.unpack(RX_PACKET_FORMAT, data)
-                        self.rx_buffer.append(unpacked)
+    def wait_for_heartbeat(self):
+        while self.target_system is None:
+            time.sleep(0.5)
 
-            except Exception as e:
-                print(f"[receive] Error: {e}")
-                break
-
-    def popRxBuffer(self):
-        if not self.rx_buffer:
-            return None, None
-        unpacked = self.rx_buffer.pop(0)
-        data_type = receive_data_type[unpacked[0]] if unpacked[0] < len(receive_data_type) else "UNKNOWN"
-        data = unpacked[2:6]  # 4つのdouble
-        return data_type, data
-
-    def send_immediate(self, data_type_str, data):
-        if data_type_str not in send_data_type or data_type_str == "HEART_BEAT":
-            return False
-
-        type_index = send_data_type.index(data_type_str)
-        timestamp = int(time.time() * 1000) & 0xFFFFFFFF
-
+    def set_mode(self, mode_str):
+        if self.target_system is None:
+            return
         try:
-            if data_type_str == "CONTROL_PACKET":
-                assert isinstance(data, int) and 0 <= data <= 255
-                packed = struct.pack(TX_CONTROL_PACKET_FORMAT[:-1], type_index, timestamp, data)
-                checksum = self.calculate_checksum(packed)
-                packet = packed + struct.pack('B', checksum)
+            mode = self.master.mode_mapping()[mode_str]
+        except KeyError:
+            print(f"Unknown mode: {mode_str}")
+            return
+        self.master.mav.set_mode_send(
+            self.target_system,
+            mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
+            mode
+        )
 
-            elif data_type_str == "DATA_PACKET":
-                assert isinstance(data, (list, tuple)) and len(data) == 3
-                packed = struct.pack(TX_PACKET_FORMAT[:-1], type_index, timestamp, *data)
-                checksum = self.calculate_checksum(packed)
-                packet = packed + struct.pack('B', checksum)
+    def set_arm(self, arm: bool):
+        if self.target_system is None:
+            return
+        self.master.mav.command_long_send(
+            target_system=self.target_system,
+            target_component=self.target_component,
+            command=mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+            confirmation=0,
+            param1=1 if arm else 0,
+            param2=0, param3=0, param4=0,
+            param5=0, param6=0, param7=0
+        )
 
-            else:
-                return False
+    def send_guided_position(self, x, y, z, yaw_deg):
+        if self.target_system is None:
+            return
+        yaw_rad = math.radians(yaw_deg)
+        type_mask = (
+            mavutil.mavlink.POSITION_TARGET_TYPEMASK_VX_IGNORE |
+            mavutil.mavlink.POSITION_TARGET_TYPEMASK_VY_IGNORE |
+            mavutil.mavlink.POSITION_TARGET_TYPEMASK_VZ_IGNORE |
+            mavutil.mavlink.POSITION_TARGET_TYPEMASK_AX_IGNORE |
+            mavutil.mavlink.POSITION_TARGET_TYPEMASK_AY_IGNORE |
+            mavutil.mavlink.POSITION_TARGET_TYPEMASK_AZ_IGNORE |
+            mavutil.mavlink.POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE
+        )
+        time_boot_ms = int((time.monotonic() - self.start_time) * 1000)
+        self.master.mav.set_position_target_local_ned_send(
+            time_boot_ms,
+            self.target_system,
+            self.target_component,
+            mavutil.mavlink.MAV_FRAME_LOCAL_ENU,
+            type_mask,
+            x, y, z,
+            0, 0, 0,
+            0, 0, 0,
+            yaw_rad, 0
+        )
 
-            self.udp_socket.sendto(packet, (self.send_ip, self.send_port))
-            return True
+    def flight_test(self):
+        self.wait_for_heartbeat()
 
-        except Exception as e:
-            print(f"[send_immediate] Send failed: {e}")
-            return False
+        self.set_arm(True)
+        time.sleep(2)
+
+        self.set_mode("GUIDED")
+        time.sleep(2)
+
+        for i in range(20):
+            angle = i * 18
+            radius = 3.0
+            x = radius * math.cos(math.radians(angle))
+            y = radius * math.sin(math.radians(angle))
+            z = 5.0
+            self.send_guided_position(x, y, z, yaw_deg=angle)
+            time.sleep(0.5)
+
+        self.set_mode("LAND")
+        time.sleep(5)
+
+        self.set_arm(False)
+
+# 使用例
+if __name__ == "__main__":
+    drone = DroneController()
+    try:
+        drone.start()
+        drone.flight_test()
+    finally:
+        drone.stop()
