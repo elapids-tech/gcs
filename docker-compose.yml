@@ -7,7 +7,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8003:8000"
       - "5001:5001/udp"
     volumes:
       - ./:/idls_app
