@@ -54,7 +54,8 @@ class Setpoint(BaseModel):
 
 manager = ConnectionManager()
 project = ProjectManager()
-drone_ctl = DroneController()
+drone_ctl = DroneController(connection_string='udpout:192.168.0.3:14551')
+# drone_ctl = DroneController()
 
 app = FastAPI()
 
