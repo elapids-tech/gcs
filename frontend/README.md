@@ -3,20 +3,20 @@
 ## ディレクトリ構成
 ```
 src/
-├── features/
-│   ├── auth/                                  # 認証機能（ログイン・サインアップなど）
-│   │   ├── components/
+├── features/                                   # 機能（ドメイン）ごとにまとめる
+│   ├── auth/                                   # 認証機能（ログイン、サインアップなど）
+│   │   ├── components/                         # 認証に関する再利用可能なUI部品（LoginFormなど）
 │   │   │   └── LoginForm.tsx
-│   │   │   └── LoginForm.module.css
-│   │   ├── pages/
+│   │   │   └── LoginForm.module.css            # CSS Modulesによるスタイル
+│   │   ├── pages/                              # ページ単位のコンポーネント（React Routerの対象）
 │   │   │   └── LoginPage.tsx
-│   │   ├── hooks/
+│   │   ├── hooks/                              # 認証用カスタムフック（useLoginなど）
 │   │   │   └── useLogin.ts
-│   │   ├── services/
+│   │   ├── services/                           # 認証APIとの通信処理
 │   │   │   └── authService.ts
-│   │   └── types.ts
+│   │   └── types.ts                            # 認証に関する型定義（LoginPayloadなど）
 │
-│   ├── user/                                  # ユーザー機能（プロフィールなど）
+│   ├── user/                                   # ユーザー機能（プロフィール表示・編集など）
 │   │   ├── components/
 │   │   │   └── UserProfile.tsx
 │   │   │   └── UserProfile.module.css
@@ -28,7 +28,7 @@ src/
 │   │   │   └── userService.ts
 │   │   └── types.ts
 │
-│   └── dashboard/                             # ダッシュボード機能（トップ画面など）
+│   └── dashboard/                              # ダッシュボード機能（統計、カード表示など）
 │       ├── components/
 │       │   └── DashboardCard.tsx
 │       │   └── DashboardCard.module.css
@@ -40,31 +40,31 @@ src/
 │       │   └── dashboardService.ts
 │       └── types.ts
 │
-├── shared/                                    # 全機能共通の汎用リソース
-│   ├── components/
+├── shared/                                     # 全機能で共有される部品・ロジック・型
+│   ├── components/                             # 汎用UI（Button, Modalなど）
 │   │   └── Button.tsx
 │   │   └── Button.module.css
-│   ├── hooks/
+│   ├── hooks/                                  # 共通カスタムフック（useDebounceなど）
 │   │   └── useDebounce.ts
-│   ├── utils/
+│   ├── utils/                                  # 汎用ユーティリティ関数（formatDateなど）
 │   │   └── formatDate.ts
-│   └── types/
+│   └── types/                                  # アプリ全体で使う共通型定義
 │       └── common.ts
 │
-├── store/                                     # グローバル状態管理（Reduxなど）
-│   ├── index.ts
-│   └── slices/
+├── store/                                      # グローバル状態管理（Redux Toolkitなど）
+│   ├── index.ts                                # Store全体の初期化とProvider連携
+│   └── slices/                                 # Slice単位で状態を分離
 │       ├── authSlice.ts
 │       └── userSlice.ts
 │
-├── assets/                                    # 画像・フォント・グローバルCSSなど
-│   ├── images/
+├── assets/                                     # 静的アセット類（画像、グローバルCSSなど）
+│   ├── images/                                 # ロゴ、アイコン、背景画像など
 │   └── styles/
-│       └── variables.css
+│       └── variables.css                       # 全体のカラー変数やリセットCSSなど
 │
-├── App.tsx                                    # アプリ全体のルーティング構成
-├── main.tsx                                   # アプリのエントリポイント
-└── vite-env.d.ts                              # Vite用の型定義ファイル（Vite使用時）
+├── App.tsx                                     # アプリ全体のルーティング構成（React Router）
+├── main.tsx                                    # エントリーポイント（ReactDOM.createRoot）
+└── vite-env.d.ts                               # Viteの環境変数用型定義ファイル
 ```
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
