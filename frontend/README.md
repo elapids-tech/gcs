@@ -1,4 +1,71 @@
-# Getting Started with Create React App
+# IDLS Configurator
+
+## ディレクトリ構成
+```
+src/
+├── features/
+│   ├── auth/                                  # 認証機能（ログイン・サインアップなど）
+│   │   ├── components/
+│   │   │   └── LoginForm.tsx
+│   │   │   └── LoginForm.module.css
+│   │   ├── pages/
+│   │   │   └── LoginPage.tsx
+│   │   ├── hooks/
+│   │   │   └── useLogin.ts
+│   │   ├── services/
+│   │   │   └── authService.ts
+│   │   └── types.ts
+│
+│   ├── user/                                  # ユーザー機能（プロフィールなど）
+│   │   ├── components/
+│   │   │   └── UserProfile.tsx
+│   │   │   └── UserProfile.module.css
+│   │   ├── pages/
+│   │   │   └── ProfilePage.tsx
+│   │   ├── hooks/
+│   │   │   └── useUserProfile.ts
+│   │   ├── services/
+│   │   │   └── userService.ts
+│   │   └── types.ts
+│
+│   └── dashboard/                             # ダッシュボード機能（トップ画面など）
+│       ├── components/
+│       │   └── DashboardCard.tsx
+│       │   └── DashboardCard.module.css
+│       ├── pages/
+│       │   └── DashboardPage.tsx
+│       ├── hooks/
+│       │   └── useDashboard.ts
+│       ├── services/
+│       │   └── dashboardService.ts
+│       └── types.ts
+│
+├── shared/                                    # 全機能共通の汎用リソース
+│   ├── components/
+│   │   └── Button.tsx
+│   │   └── Button.module.css
+│   ├── hooks/
+│   │   └── useDebounce.ts
+│   ├── utils/
+│   │   └── formatDate.ts
+│   └── types/
+│       └── common.ts
+│
+├── store/                                     # グローバル状態管理（Reduxなど）
+│   ├── index.ts
+│   └── slices/
+│       ├── authSlice.ts
+│       └── userSlice.ts
+│
+├── assets/                                    # 画像・フォント・グローバルCSSなど
+│   ├── images/
+│   └── styles/
+│       └── variables.css
+│
+├── App.tsx                                    # アプリ全体のルーティング構成
+├── main.tsx                                   # アプリのエントリポイント
+└── vite-env.d.ts                              # Vite用の型定義ファイル（Vite使用時）
+```
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
