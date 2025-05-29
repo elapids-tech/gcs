@@ -1,11 +1,22 @@
-from pymavlink import mavutil
-import threading
+import socket
 import time
+import threading
 import math
+from pymavlink import mavutil
 
 class DroneController:
-    def __init__(self, connection_string='udpout:127.0.0.1:14551', source_system=255):
-        self.master = mavutil.mavlink_connection(connection_string, source_system=source_system)
+    def __init__(self, remote_ip, remote_port, local_port, source_system=255):
+        self.remote_addr = (remote_ip, remote_port)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(('0.0.0.0', local_port))
+
+        self.master = mavutil.mavlink_connection(
+            device=None,
+            input=self.sock,
+            write=self._write_msg,
+            source_system=source_system
+        )
+
         self.target_system = None
         self.target_component = 1
         self.start_time = time.monotonic()
@@ -15,6 +26,9 @@ class DroneController:
 
         self._heartbeat_thread = threading.Thread(target=self._send_heartbeat_loop, daemon=True)
         self._listen_thread = threading.Thread(target=self._listen_loop, daemon=True)
+
+    def _write_msg(self, data):
+        self.sock.sendto(data, self.remote_addr)
 
     def start(self):
         self._heartbeat_thread.start()
@@ -66,13 +80,12 @@ class DroneController:
         if self.target_system is None:
             return
         self.master.mav.command_long_send(
-            target_system=self.target_system,
-            target_component=self.target_component,
-            command=mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
-            confirmation=0,
-            param1=1 if arm else 0,
-            param2=0, param3=0, param4=0,
-            param5=0, param6=0, param7=0
+            self.target_system,
+            self.target_component,
+            mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+            0,
+            1 if arm else 0,
+            0, 0, 0, 0, 0, 0
         )
 
     def send_guided_position(self, x, y, z, yaw_deg):
@@ -100,35 +113,3 @@ class DroneController:
             0, 0, 0,
             yaw_rad, 0
         )
-
-    def flight_test(self):
-        self.wait_for_heartbeat()
-
-        self.set_arm(True)
-        time.sleep(2)
-
-        self.set_mode("GUIDED")
-        time.sleep(2)
-
-        for i in range(20):
-            angle = i * 18
-            radius = 3.0
-            x = radius * math.cos(math.radians(angle))
-            y = radius * math.sin(math.radians(angle))
-            z = 5.0
-            self.send_guided_position(x, y, z, yaw_deg=angle)
-            time.sleep(0.5)
-
-        self.set_mode("LAND")
-        time.sleep(5)
-
-        self.set_arm(False)
-
-# 使用例
-if __name__ == "__main__":
-    drone = DroneController()
-    try:
-        drone.start()
-        drone.flight_test()
-    finally:
-        drone.stop()

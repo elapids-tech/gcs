@@ -54,8 +54,11 @@ class Setpoint(BaseModel):
 
 manager = ConnectionManager()
 project = ProjectManager()
-drone_ctl = DroneController(connection_string='udpout:192.168.0.3:14551')
-# drone_ctl = DroneController()
+drone_ctl = DroneController(
+    remote_ip='192.168.0.3',     # ← Raspberry Pi の IP
+    remote_port=14551,
+    local_port=14550
+)
 
 app = FastAPI()
 

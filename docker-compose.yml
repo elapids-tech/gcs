@@ -13,8 +13,9 @@ services:
       - ./:/idls_app
     environment:
       - PYTHONUNBUFFERED=1
-    networks:
-      - udp_network
+    # networks:
+    #   - udp_network
+    network_mode: host
 
   frontend:
     container_name: idls_app_frontend
