@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     libxslt1-dev \
     zlib1g-dev \
+    iputils-ping \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
