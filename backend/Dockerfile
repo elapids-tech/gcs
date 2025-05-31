@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     libxslt1-dev \
     zlib1g-dev \
     iputils-ping \
+    netcat-openbsd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
