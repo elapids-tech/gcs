@@ -9,13 +9,14 @@ services:
     ports:
       - "8003:8000"
       - "5001:5001/udp"
+      - "14550:14550/udp"
+      - "14551:14551/udp"
     volumes:
       - ./:/idls_app
     environment:
       - PYTHONUNBUFFERED=1
-    # networks:
-    #   - udp_network
-    network_mode: host
+    networks:
+      - udp_network
 
   frontend:
     container_name: idls_app_frontend
