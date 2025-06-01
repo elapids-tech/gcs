@@ -96,20 +96,30 @@ class DroneController:
         while self.target_system is None:
             time.sleep(0.5)
 
-    def set_mode(self, mode_str):
+    def set_mode(self, mode_str: str):
         if self.target_system is None:
+            print("[set_mode] Target system is not set.")
             return
+
+        mode_map = {
+            'AUTO': 3,
+            'GUIDED': 4,
+            'LOITER': 5,
+            'LAND': 9
+        }
+
         try:
-            mode = self.send_conn.mode_mapping()[mode_str]
+            custom_mode = mode_map[mode_str.upper()]
             self.send_conn.mav.set_mode_send(
                 self.target_system,
                 mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
-                mode
+                custom_mode
             )
+            print(f"[set_mode] Sent mode: {mode_str} (custom_mode={custom_mode})")
         except KeyError:
             print(f"[set_mode] Unknown mode: {mode_str}")
         except Exception as e:
-            print(f"[set_mode] Error: {e}")
+            print(f"[set_mode] Error sending mode: {e}")
 
     def set_arm(self, arm: bool):
         if self.target_system is None:
