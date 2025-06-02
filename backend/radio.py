@@ -88,6 +88,9 @@ class DroneController:
             time.sleep(1)
 
     def _listen_loop(self):
+        """
+        todo : heartbeatを受信したときに、登録されていないsysidであればsysid登録と、Telemetryのインスタンスを作成する。
+        """
         while self._running.is_set():
             try:
                 msg = self.recv_conn.recv_match(blocking=True, timeout=1)
@@ -105,11 +108,6 @@ class DroneController:
                     if msg_type == 'ATT_POS_MOCAP':
                         telemetry.quaternion = msg.q
                         telemetry.position = (msg.x, msg.y, msg.z)
-                        print(f"[Python] Received ATT_POS_MOCAP:")
-                        print(f"  System ID: {sysid}")
-                        print(f"  Time (usec): {msg.time_usec}")
-                        print(f"  Quaternion: {msg.q}")
-                        print(f"  Position: x={msg.x}, y={msg.y}, z={msg.z}")
 
                 if msg_type == 'HEARTBEAT':
                     if self.target_system is None:
