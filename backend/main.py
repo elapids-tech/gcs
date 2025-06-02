@@ -1,4 +1,5 @@
 import json
+import asyncio
 from pydantic import BaseModel
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
@@ -43,11 +44,6 @@ class ProjectManager:
             "position": position,
             "quaternion": quaternion
         }
-
-class DroneState:
-    def __init__(self):
-        self.position = [0.0, 0.0, 0.0]
-        self.quaternion = [0.0, 0.0, 0.0, 1.0]
 
 class Setpoint(BaseModel):
     x: float
@@ -120,6 +116,20 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
         print("WebSocket disconnected")
+
+async def periodic_task():
+    while True:
+        if drone_ctl and drone_ctl.is_running():
+            # get drone position and quaternion telemetry from drone_ctl.
+            telemetry = {
+                "key": "telemetry",
+                "value": {
+                    "position": getattr(drone_ctl, "position", [0.0, 0.0, 0.0]),
+                    "quaternion": getattr(drone_ctl, "quaternion", [0.0, 0.0, 0.0, 1.0]),
+                }
+            }
+            await manager.broadcast(json.dumps(telemetry))
+        await asyncio.sleep(0.0333)  # 30 FPS
 
 @app.post("/upload/")
 async def upload_file(request: Request):
@@ -204,6 +214,9 @@ async def startup_event():
         else:
             print("[startup] DroneController already initialized.")
     print("[startup] FastAPI app started.")
+
+    asyncio.create_task(periodic_task())
+    print("[startup] periodic_task started as background task.")
 
 @app.on_event("shutdown")
 async def shutdown_event():

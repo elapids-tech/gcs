@@ -4,6 +4,11 @@ import threading
 import math
 from pymavlink import mavutil
 
+class TelemetryDateFormat:
+    def __init__(self):
+        self.quaternion = None
+        self.position = None
+
 class DroneController:
     def __init__(self, remote_ip, remote_port, local_port, source_system=255):
         self.remote_ip = remote_ip
@@ -25,6 +30,8 @@ class DroneController:
         self._listen_thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._heartbeat_thread.start()
         self._listen_thread.start()
+
+        self.telemetry_dict = {} 
 
     def stop(self):
         self._running.clear()
@@ -84,11 +91,31 @@ class DroneController:
         while self._running.is_set():
             try:
                 msg = self.recv_conn.recv_match(blocking=True, timeout=1)
-                if msg and msg.get_type() == 'HEARTBEAT':
-                    sysid = msg.get_srcSystem()
+                if not msg:
+                    continue
+
+                msg_type = msg.get_type()
+                sysid = msg.get_srcSystem() if hasattr(msg, "get_srcSystem") else None
+
+                if sysid is not None:
+                    if sysid not in self.telemetry_dict:
+                        self.telemetry_dict[sysid] = TelemetryDateFormat()
+                    telemetry = self.telemetry_dict[sysid]
+
+                    if msg_type == 'ATT_POS_MOCAP':
+                        telemetry.quaternion = msg.q
+                        telemetry.position = (msg.x, msg.y, msg.z)
+                        print(f"[Python] Received ATT_POS_MOCAP:")
+                        print(f"  System ID: {sysid}")
+                        print(f"  Time (usec): {msg.time_usec}")
+                        print(f"  Quaternion: {msg.q}")
+                        print(f"  Position: x={msg.x}, y={msg.y}, z={msg.z}")
+
+                if msg_type == 'HEARTBEAT':
                     if self.target_system is None:
                         self.target_system = sysid
                     print(f"[Python] Received HEARTBEAT from sysid={sysid}")
+
             except Exception as e:
                 print(f"[listen] receive error: {e}")
 
