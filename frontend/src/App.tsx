@@ -15,6 +15,7 @@ type Landmarks = {
 };
 
 type DronePose = {
+  sysid: number;
   position: [number, number, number];
   quaternion: [number, number, number, number];
 };
