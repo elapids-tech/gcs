@@ -120,14 +120,21 @@ async def websocket_endpoint(websocket: WebSocket):
 async def periodic_task():
     while True:
         if drone_ctl and drone_ctl.is_running():
-            # get drone position and quaternion telemetry from drone_ctl.
+            telemetry_list = []
+            print("[periodic_task] Collecting telemetry data...")
+            # telemetry_dictの全てのsysidについてデータをまとめる
+            for sysid, t in getattr(drone_ctl, "telemetry_dict", {}).items():
+                print(f"[periodic_task] sysid={sysid}, position={t.position}, quaternion={t.quaternion}")
+                telemetry_list.append({
+                    "id": sysid,
+                    "position": list(t.position) if t.position is not None else [0.0, 0.0, 0.0],
+                    "quaternion": list(t.quaternion) if t.quaternion is not None else [0.0, 0.0, 0.0, 1.0],
+                })
             telemetry = {
                 "key": "telemetry",
-                "value": {
-                    "position": getattr(drone_ctl, "position", [0.0, 0.0, 0.0]),
-                    "quaternion": getattr(drone_ctl, "quaternion", [0.0, 0.0, 0.0, 1.0]),
-                }
+                "value": telemetry_list
             }
+            print(f"[periodic_task] Broadcasting telemetry: {telemetry}")
             await manager.broadcast(json.dumps(telemetry))
         await asyncio.sleep(0.0333)  # 30 FPS
 
