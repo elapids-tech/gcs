@@ -122,8 +122,8 @@ async def periodic_task():
         if drone_ctl and drone_ctl.is_running():
             # sysidごとにTelemetry情報を分類して送信 将来的にまとめて送信するように変更する。
             for sysid, t in getattr(drone_ctl, "telemetry_dict", {}).items():
-                drone_pose = { "key":"dronePoseUpdate" , 
-                               "value": { "sysid": sysid,  # ←ここを修正
+                drone_pose = { "key":"dronePoseUpdate" ,
+                               "value": { "sysid": sysid,
                                           "position": list(t.position) if t.position is not None else [0.0, 0.0, 0.0],
                                           "quaternion": list(t.quaternion) if t.quaternion is not None else [0.0, 0.0, 0.0, 1.0] }
                 }

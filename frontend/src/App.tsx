@@ -240,7 +240,7 @@ const DroneControlPanel: React.FC = () => {
       x: parseFloat(x),
       y: parseFloat(y),
       z: parseFloat(z),
-      yaw_deg: parseFloat(yaw), // FastAPI側に合わせて yaw_deg に変更
+      yaw_deg: parseFloat(yaw),
     };
 
     fetch('http://localhost:8003/set-setpoint', {
@@ -278,6 +278,8 @@ const DroneControlPanel: React.FC = () => {
       <div style={{ minHeight: containerHeight + 100 }}>
         <div className='bottons-column'>
 
+          <h2>Telemetry</h2>
+
           <h2>Control</h2>
           <button onClick={handleClickArm}>Arm</button>
           <button onClick={handleClickDisarm}>Disarm</button>
@@ -304,15 +306,16 @@ const DroneControlPanel: React.FC = () => {
           <h2>No function</h2>
           <button onClick={handleClickStart}>Start</button>
           <button onClick={handleClickStop}>Stop</button>
+          
         </div>
       </div>
     </div>
   );
 };
 
-function R1() {
+function MainLayout() {
   return (
-    <div className="R1">
+    <div className="main-layout">
       <Split
         className="top"
         sizes={[70, 30]}
@@ -334,7 +337,7 @@ function R1() {
 const App = () => {
   return (
     <div className="app">
-      <R1/>
+      <MainLayout/>
     </div>
   );
 };

@@ -17,7 +17,7 @@ body,
   flex-direction: column;
 }
 
-.R1 {
+.main-layout {
   flex: 1;
   margin: 5px;
   padding: 0px;
@@ -27,17 +27,17 @@ body,
   flex-direction: row;
 }
 
-.top {
+.layout-split {
   display: flex;
   flex: 1;
   background-color: #66c01c;
 }
 
-.left {
+.left-panel {
   background-color: #1cc0c0;
 }
 
-.right {
+.right-panel {
   background-color: #dbe728;
 }
 
