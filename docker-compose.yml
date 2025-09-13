@@ -29,16 +29,8 @@ services:
     ports:
       - '3000:3000'
     volumes:
-      - ./frontend:/idls_app/frontend
-      - node_modules:/idls_app/frontend/node_modules
-
-volumes:
-  node_modules:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${PWD}/frontend/node_modules
-      o: bind
+      - ./frontend:/idls_app/frontend:cached
+      - /idls_app/frontend/node_modules
 
 networks:
   udp_network:
