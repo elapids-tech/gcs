@@ -22,7 +22,8 @@
 			"extensions": [
 				"ms-azuretools.vscode-docker",
 				"ms-python.python",
-				"shd101wyy.markdown-preview-enhanced"
+				"shd101wyy.markdown-preview-enhanced",
+				"spmeesseman.vscode-taskexplorer"
 			]
 		}
 	}
