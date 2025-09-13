@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from radio import DroneController
+from backend.radio import DroneController
 from threading import Lock
 
 REMOTE_IP = "192.168.0.3"
