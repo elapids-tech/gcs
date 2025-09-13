@@ -3,6 +3,9 @@ FROM python:3.11-slim
 
 # 必要なパッケージをインストール
 RUN apt-get update && apt-get install -y \
+    procps \
+    netcat-openbsd \
+    curl \ 
     git \
     ca-certificates \
     gcc \
@@ -13,7 +16,6 @@ RUN apt-get update && apt-get install -y \
     libxslt1-dev \
     zlib1g-dev \
     iputils-ping \
-    netcat-openbsd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
