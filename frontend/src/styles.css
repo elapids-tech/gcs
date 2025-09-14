@@ -1,108 +1,56 @@
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  width: 100%;
+/* ルートを 100% 高さにしてスクロールの暴走を防止 */
+html, body, #root {
   height: 100%;
   margin: 0;
-  padding: 0;
 }
 
+/* アプリ全体 */
 .app {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
+  height: 100%;
 }
 
+/* メインレイアウトは 100vh で固定 */
 .main-layout {
-  flex: 1;
-  margin: 5px;
-  padding: 0px;
-  border-radius: 8px;
-  background-color: #fff;
-  display: flex;
-  flex-direction: row;
-}
-
-.layout-split {
-  display: flex;
-  flex: 1;
-  background-color: #66c01c;
-}
-
-.left-panel {
-  background-color: #1cc0c0;
-}
-
-.right-panel {
-  background-color: #dbe728;
-}
-
-.bottons-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1em;
-  width: fit-content;
-}
-
-/* * {
-  margin: 0px;
-  padding: 0px;
-} */
-/* .App {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-
-.Split {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.Split > div {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: auto;
-} */
-/* .App {
   height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
+/* Split コンテナは全高・横並び */
 .split {
+  height: 100%;
+  width: 100%;
+  display: flex;
+}
+
+/* 各ペインは高さ100% */
+.pane {
+  height: 100%;
+  overflow: hidden; /* 左ペインは Canvas をはみ出させない */
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
-.panel {
-  background-color: #f0f0f0;
-  border: 1px solid #ddd;
-  padding: 10px;
-  box-sizing: border-box;
-} */
-
-/* .split {
-  display: flex;
-  height: 100vh;
-}
-
-.left-pane,
-.right-pane {
+/* 右ペインだけ縦スクロール可 */
+.pane-right {
   overflow: auto;
-  padding: 10px;
 }
 
-.split .gutter {
-  background-color: #eee;
-  background-repeat: no-repeat;
-  background-position: 50%;
-  cursor: col-resize;
-} */
+/* Canvas を親サイズに完全フィット */
+.canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 1px solid red;
+}
+
+/* 右側のUI */
+.panel {
+  height: 100%;
+  box-sizing: border-box;
+  border-left: 1px solid #ddd;
+}
+
+.panel-inner {
+  padding: 8px;
+}
