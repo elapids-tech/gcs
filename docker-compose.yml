@@ -13,7 +13,9 @@ services:
       - "14551:14551/udp"
     volumes:
       - ./:/idls_app
-    command: sh -c "uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload & sleep infinity"
+    tty: true
+    stdin_open: true
+    # command: sh -c "uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload & sleep infinity"
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/idls_app
