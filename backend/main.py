@@ -4,12 +4,15 @@ from pydantic import BaseModel
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from backend.radio import DroneController
 from threading import Lock
+import cv2
+import numpy as np
+from datetime import datetime
+from backend.mavlink_client import MavlinkClient
 
-REMOTE_IP = "192.168.0.3"
-REMOTE_PORT = 14551
-LOCAL_PORT = 14550
+mavlink_client = MavlinkClient()
+
+clients = set()
 
 class ConnectionManager:
     def __init__(self):
@@ -31,20 +34,6 @@ class ConnectionManager:
                 print(f"WebSocket send error: {e}")
                 self.disconnect(connection)
 
-class ProjectManager:
-    def __init__(self):
-        self.landmarks = []
-        self.drone_pose = None
-
-    def add_landmark(self, id, x, y, z):
-        self.landmarks.append({"id": id, "x": x, "y": y, "z": z})
-
-    def update_drone_pose(self, position, quaternion):
-        self.drone_pose = {
-            "position": position,
-            "quaternion": quaternion
-        }
-
 class Setpoint(BaseModel):
     x: float
     y: float
@@ -52,9 +41,6 @@ class Setpoint(BaseModel):
     yaw_deg: float
 
 manager = ConnectionManager()
-project = ProjectManager()
-drone_ctl = None
-drone_ctl_lock = Lock()
 
 app = FastAPI()
 
@@ -65,46 +51,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.post("/start")
-def start():
-    global drone_ctl
-    with drone_ctl_lock:
-        if drone_ctl is None:
-            drone_ctl = DroneController(
-                remote_ip=REMOTE_IP,
-                remote_port=REMOTE_PORT,
-                local_port=LOCAL_PORT
-            )
-            print("[/start] DroneController instance created and communication started.")
-            return {"status": "started"}
-        else:
-            print("[/start] DroneController already exists.")
-            return {"status": "already running"}
-
-@app.post("/stop")
-def stop():
-    global drone_ctl
-    with drone_ctl_lock:
-        if drone_ctl is not None:
-            drone_ctl.stop()
-            drone_ctl = None
-            print("[/stop] DroneController stopped and instance deleted.")
-            return {"status": "stopped"}
-        else:
-            print("[/stop] DroneController not running.")
-            return {"status": "not running"}
-        
-@app.get("/status")
-def get_status():
-    global drone_ctl
-    if drone_ctl is None:
-        return {"initialized": False, "running": False}
-    return {
-        "initialized": True,
-        "running": drone_ctl.is_running(),
-        "target_system": drone_ctl.target_system,
-    }
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -117,113 +63,115 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
         print("WebSocket disconnected")
 
-async def periodic_task():
-    while True:
-        if drone_ctl and drone_ctl.is_running():
-            # sysidごとにTelemetry情報を分類して送信 将来的にまとめて送信するように変更する。
-            for sysid, t in getattr(drone_ctl, "telemetry_dict", {}).items():
-                drone_pose = { "key":"dronePoseUpdate" ,
-                               "value": { "sysid": sysid,
-                                          "position": list(t.position) if t.position is not None else [0.0, 0.0, 0.0],
-                                          "quaternion": list(t.quaternion) if t.quaternion is not None else [0.0, 0.0, 0.0, 1.0] }
-                }
+@app.websocket("/ws/video")
+async def video_stream(websocket: WebSocket):
+    await websocket.accept()
 
-                await manager.broadcast(json.dumps(drone_pose))
+    try:
+        while True:
+            # テスト用ダミーフレームを作成する。
+            frame = np.full((480, 640, 3), 200, dtype=np.uint8)  # 480x640, RGB, 灰色
+
+            # 現在時刻を描画する。
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cv2.putText(frame,
+                now,
+                (50, 240),  # 位置
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1.0,
+                (0, 0, 0),  # 黒文字
+                2,
+                cv2.LINE_AA,
+            )
+
+            # JPEGに変換 
+            _, jpeg = cv2.imencode(".jpg", frame)
+            data = jpeg.tobytes()
+
+            await websocket.send_bytes(data)
+
+            # 15fps
+            await asyncio.sleep(1 / 15)
+
+    except WebSocketDisconnect:
+        print("クライアント切断")
+    except Exception as e:
+        print(f"予期せぬエラー: {e}")
+    finally:
+        pass
+
+async def periodic_task():
+    """
+    30hzでmavlink clientのtelemetry情報を取得し、websocketで送信する。
+    """
+    while True:
+        position = mavlink_client.get_drone_position()
+        quaternion = mavlink_client.get_drone_quaternion()
+
+        # 現状sysidは1に固定。将来的に複数ドローンに対応する。
+        sysid = 1
+        drone_pose = { "key":"dronePoseUpdate" ,
+                      "value": { "sysid": sysid,
+                      "position": list(position),
+                      "quaternion": list(quaternion)}}
+
+        await manager.broadcast(json.dumps(drone_pose))
 
         await asyncio.sleep(0.0333)  # 30 FPS
 
-@app.post("/upload/")
-async def upload_file(request: Request):
-    body = await request.body()
-    data = json.loads(body.decode('utf-8'))
+@app.post("/start")
+def start():
+    print("[/start] start endpoint called")
 
-    project.landmarks.clear()
-    for landmark in data:
-        id = str(landmark['id'])
-        pos = landmark['center']
-        project.landmarks.append({"id": id, "x": pos[0], "y": pos[1], "z": pos[2]})
-
-    send_data = {"key": "setLandmarks", "value": project.landmarks}
-    await manager.broadcast(json.dumps(send_data))
-    return {"state_message": 0}
-
-@app.post("/upload-image")
-async def upload_image(request: Request):
-    pass
+@app.post("/stop")
+def stop():
+    print("[/stop] stop endpoint called")    
 
 @app.post("/arm")
 def arm():
-    global drone_ctl
-    if drone_ctl:
-        print('arm pressed')
-        drone_ctl.set_arm(True)
+    print('arm pressed')
     return {"status": "arm command sent"}
 
 @app.post("/disarm")
 def disarm():
-    global drone_ctl
-    if drone_ctl:
-        print('disarm pressed')
-        drone_ctl.set_arm(False)
+    print('disarm pressed')
     return {"status": "disarm command sent"}
 
 @app.post("/guide")
 def set_guide_mode():
-    global drone_ctl
-    if drone_ctl:
-        print('guide pressed')
-        drone_ctl.set_mode('GUIDED')
+    print('guide pressed')
     return {"status": "GUIDED mode set"}
 
 @app.post("/auto")
 def set_auto_mode():
-    global drone_ctl
-    if drone_ctl:
-        print('auto pressed')
-        drone_ctl.set_mode('AUTO')
+    print('auto pressed')
     return {"status": "AUTO mode set"}
 
 @app.post("/set-setpoint")
 def set_setpoint(setpoint: Setpoint):
-    global drone_ctl
-    if drone_ctl:
-        print("=== /set-setpoint endpoint called ===")
-        print(f"  x       = {setpoint.x}")
-        print(f"  y       = {setpoint.y}")
-        print(f"  z       = {setpoint.z}")
-        print(f"  yaw_deg = {setpoint.yaw_deg}")
-
-        drone_ctl.send_guided_position(setpoint.x, setpoint.y, setpoint.z, setpoint.yaw_deg)
-        print("Sent setpoint to drone_ctl.")
-
+    print("=== /set-setpoint endpoint called ===")
+    print(f"  x       = {setpoint.x}")
+    print(f"  y       = {setpoint.y}")
+    print(f"  z       = {setpoint.z}")
+    print(f"  yaw_deg = {setpoint.yaw_deg}")
+    
     return JSONResponse(
         status_code=200,
         content={"status": "success", "message": "Setpoint command sent to drone."}
     )
 
+@app.post("/config-mode/keep-alive")
+def send_enable_config_mode_signal():
+    mavlink_client.set_config_mode_signal()
+    return {"status": "ok"}
+
 @app.on_event("startup")
 async def startup_event():
-    global drone_ctl
-    with drone_ctl_lock:
-        if drone_ctl is None:
-            drone_ctl = DroneController(
-                remote_ip=REMOTE_IP,
-                remote_port=REMOTE_PORT,
-                local_port=LOCAL_PORT
-            )
-            print("[startup] DroneController instance created and communication started.")
-        else:
-            print("[startup] DroneController already initialized.")
     print("[startup] FastAPI app started.")
-
     asyncio.create_task(periodic_task())
     print("[startup] periodic_task started as background task.")
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    global drone_ctl
-    with drone_ctl_lock:
-        if drone_ctl:
-            drone_ctl.stop()
-            drone_ctl = None
-            print("[shutdown] DroneController stopped and instance deleted.")
+    mavlink_client.stop()
+    print("[shutdown] Mavlink client stopped.")
