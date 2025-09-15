@@ -7,26 +7,45 @@ html, body, #root {
 /* アプリ全体 */
 .app {
   height: 100%;
-}
-
-/* メインレイアウトは 100vh で固定 */
-.main-layout {
-  height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-/* Split コンテナは全高・横並び */
-.split {
-  height: 100%;
-  width: 100%;
+/* メインレイアウト全体を縦に分割 */
+.main-layout {
+  flex: 1; /* 親(.app)の残り全てを使う */
   display: flex;
+  flex-direction: column;
 }
 
-/* 各ペインは高さ100% */
+/* 上部タブバー */
+.top-bar {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  background: #ddd;
+  flex-shrink: 0; /* 高さ固定 */
+}
+
+/* ボタン下のメイン領域 */
+.main-content {
+  flex: 1; /* 上のバー以外を全て使う */
+  display: flex;
+  overflow: hidden;
+}
+
+/* Split コンテナは全高・横並び */
+.split {
+  flex: 1;
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+/* 各ペイン */
 .pane {
   height: 100%;
-  overflow: hidden; /* 左ペインは Canvas をはみ出させない */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -41,7 +60,6 @@ html, body, #root {
   width: 100%;
   height: 100%;
   display: block;
-  border: 1px solid red;
 }
 
 /* 右側のUI */

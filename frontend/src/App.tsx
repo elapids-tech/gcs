@@ -2,8 +2,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { Grid, Line, GizmoHelper, GizmoViewport, OrbitControls, Environment, Sphere } from '@react-three/drei';
+import { DroneConfigurationPage } from './features/droneConfiguration';
 import Split from 'react-split';
 import './styles.css';
+
 
 // Z-up をグローバルで一度だけ
 THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
@@ -222,31 +224,53 @@ const DroneControlPanel: React.FC = () => {
 };
 
 function MainLayout() {
+  const [activeTab, setActiveTab] = useState<'preview' | 'config'>('preview');
+
   return (
     <div className="main-layout">
-      <Split
-        className="split"
-        sizes={[70, 30]}
-        minSize={300}
-        expandToMin={false}
-        gutterSize={10}
-        gutterAlign="center"
-        snapOffset={30}
-        dragInterval={1}
-        direction="horizontal"
-        cursor="col-resize"
-      >
-        {/* Split の直下は DOM 要素にする */}
-        <div className="pane pane-left">
-          <Viewer3d />
-        </div>
-        <div className="pane pane-right">
-          <DroneControlPanel />
-        </div>
-      </Split>
+      {/* 上部の切替ボタン */}
+      <div className="top-bar">
+        <button
+          className={activeTab === 'preview' ? 'active' : ''}
+          onClick={() => setActiveTab('preview')}
+        >
+          プレビュー
+        </button>
+        <button
+          className={activeTab === 'config' ? 'active' : ''}
+          onClick={() => setActiveTab('config')}
+        >
+          コンフィグレーション
+        </button>
+      </div>
+
+      {/* メイン画面 */}
+      <div className="main-content">
+        {activeTab === 'preview' ? (
+          <Split
+            className="split"
+            sizes={[70, 30]}
+            minSize={300}
+            gutterSize={10}
+            direction="horizontal"
+          >
+            <div className="pane pane-left">
+              <Viewer3d />
+            </div>
+            <div className="pane pane-right">
+              <DroneControlPanel />
+            </div>
+          </Split>
+        ) : (
+          <div className="config-panel">
+            <DroneConfigurationPage />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
 
 const App = () => {
   return (
