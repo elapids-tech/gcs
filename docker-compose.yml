@@ -9,12 +9,12 @@ services:
     ports:
       - "8003:8000"
       - "5001:5001/udp"
-      - "14550:14550/udp"
-      - "14551:14551/udp"
+      - "14610:14610/udp"
     volumes:
       - ./:/idls_app
     tty: true
     stdin_open: true
+    # コンテナ起動時に自動でFastAPIサーバを起動したい場合は、下記のコメントアウトを外してください。
     # command: sh -c "uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload & sleep infinity"
     environment:
       - PYTHONUNBUFFERED=1
