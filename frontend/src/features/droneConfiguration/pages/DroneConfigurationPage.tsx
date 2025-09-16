@@ -65,7 +65,7 @@ const DroneConfigurationPage: React.FC = () => {
         <img
           src={imageUrl}
           alt="drone-stream"
-          style={{ width: "100%", maxWidth: "640px", border: "1px solid #ccc" }}
+          style={{ width: "100%", maxWidth: "1280px", border: "1px solid #ccc" }}
         />
       )}
     </div>

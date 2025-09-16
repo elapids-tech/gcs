@@ -14,7 +14,7 @@ from backend.mavlink_client import MavlinkClient
 
 # 設定値
 UDP_FRAME_RECEIVE_IP = "0.0.0.0"
-UDP_FRAME_RECEIVE_PORT = 5000
+UDP_FRAME_RECEIVE_PORT = 5001
 UDP_MAX_PAYLOAD = 65507  # UDPで実効安全な最大ペイロード
 VIDEO_FPS = 15  # /ws/video で送るフレームレート
 

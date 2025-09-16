@@ -21,7 +21,7 @@ class MavlinkClient:
 
         # mavlink 接続設定
         self.local_port = 14610
-        self.drone_app_ip = "192.168.0.5"
+        self.drone_app_ip = "192.168.0.4"
         self.drone_app_port = 14610
         self.my_sysid = 250
         self.my_compid = 190
