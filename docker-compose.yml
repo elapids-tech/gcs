@@ -35,6 +35,8 @@ services:
     volumes:
       - ./frontend:/idls_app/frontend:cached
       - /idls_app/frontend/node_modules
+    networks:
+      - udp_network
 
 networks:
   udp_network:

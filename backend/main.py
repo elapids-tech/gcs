@@ -1,4 +1,5 @@
 import json
+import time
 import asyncio
 import socket
 import contextlib
@@ -68,6 +69,8 @@ mavlink_client = MavlinkClient()
 # 最新フレーム（JPEGバイト列）を保持
 latest_frame: Optional[bytes] = None
 frame_lock = asyncio.Lock()
+# フレームが一定時間更新されなかったら途切れ扱い
+VIDEO_TIMEOUT_SEC = 3.0
 
 # UDPソケットと受信タスク（起動時に初期化）
 udp_sock: Optional[socket.socket] = None
@@ -96,9 +99,10 @@ async def udp_frame_receiver():
     try:
         while True:
             data, addr = await loop.sock_recvfrom(udp_sock, UDP_MAX_PAYLOAD)
+            now = time.time()
             async with frame_lock:
-                latest_frame = data
-                print(f"[udp] received frame: {len(data)} bytes")
+                latest_frame = {"data": data, "ts": now}
+            print(f"[udp] received frame: {len(data)} bytes from {addr}")
     except asyncio.CancelledError:
         print("[udp] receiver task cancelled")
         raise
@@ -106,20 +110,35 @@ async def udp_frame_receiver():
         print(f"[udp] receiver error: {e}")
 
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    print("[/ws] WebSocket connection established")
+@app.websocket("/ws/video")
+async def video_stream(websocket: WebSocket):
+    """クライアント接続中のみ、最新フレーム（JPEG）を送信する。"""
+    await websocket.accept()
+    print("[/ws/video] client connected")
     try:
+        interval = 1.0 / float(VIDEO_FPS)
         while True:
-            # 必要に応じてクライアントからのメッセージを処理
-            await websocket.receive_text()
+            await asyncio.sleep(interval)
+            frame_data = None
+            frame_ts = None
+            async with frame_lock:
+                if latest_frame is not None:
+                    frame_data = latest_frame["data"]
+                    frame_ts = latest_frame["ts"]
+
+            if frame_data is not None:
+                # フレームが古すぎる場合は途切れ通知
+                if time.time() - frame_ts > VIDEO_TIMEOUT_SEC:
+                    await websocket.send_text(json.dumps({
+                        "key": "streamLost",
+                        "value": {"timeout_sec": VIDEO_TIMEOUT_SEC}
+                    }))
+                else:
+                    await websocket.send_bytes(frame_data)
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
-        print("[/ws] WebSocket disconnected")
+        print("[/ws/video] client disconnected")
     except Exception as e:
-        manager.disconnect(websocket)
-        print(f"[/ws] error: {e}")
+        print(f"[/ws/video] error: {e}")
     finally:
         with contextlib.suppress(Exception):
             await websocket.close()
