@@ -98,6 +98,7 @@ async def udp_frame_receiver():
             data, addr = await loop.sock_recvfrom(udp_sock, UDP_MAX_PAYLOAD)
             async with frame_lock:
                 latest_frame = data
+                print(f"[udp] received frame: {len(data)} bytes")
     except asyncio.CancelledError:
         print("[udp] receiver task cancelled")
         raise
