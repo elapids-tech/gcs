@@ -3,26 +3,36 @@ import time
 import asyncio
 import socket
 import contextlib
+import traceback
 from typing import Optional
 
+import cv2
+import numpy as np
 from pydantic import BaseModel
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.websockets import WebSocketDisconnect, WebSocketState
 
 from backend.mavlink_client import MavlinkClient
 
+try:
+    from uvicorn.protocols.utils import ClientDisconnected
+except ImportError:
+    class ClientDisconnected(Exception):
+        pass 
 
-# 設定値
+# 設定
 UDP_FRAME_RECEIVE_IP = "0.0.0.0"
 UDP_FRAME_RECEIVE_PORT = 5001
-UDP_MAX_PAYLOAD = 65507  # UDPで実効安全な最大ペイロード
-VIDEO_FPS = 15  # /ws/video で送るフレームレート
+UDP_MAX_PAYLOAD = 65507
+VIDEO_FPS = 15
+VIDEO_TIMEOUT_SEC = 3.0
+PLACEHOLDER_DEFAULT_SIZE = (1280, 800)  # (w, h)
 
 
 class ConnectionManager:
-    """テキストメッセージ用のWebSocket接続を管理する。"""
-
+    """テレメトリ用のWebSocket接続管理"""
     def __init__(self):
         self.active_connections: list[WebSocket] = []
 
@@ -34,16 +44,33 @@ class ConnectionManager:
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
 
+    def _is_connected(self, ws: WebSocket) -> bool:
+        # Starlette 5系なら WebSocketState.CONNECTED。古い場合は属性が無いこともあるので防御的に。
+        try:
+            return ws.client_state == WebSocketState.CONNECTED
+        except Exception:
+            return True  # 状態が取れない実装でも送ってみてだめならexceptで外す
+
     async def broadcast(self, message: str):
-        dead = []
-        for connection in self.active_connections:
+        # 送信中に書き換えられないようコピーで回す
+        stale: list[WebSocket] = []
+        for ws in list(self.active_connections):
+            # 明らかに切れてるものは送らない
+            if not self._is_connected(ws):
+                stale.append(ws)
+                continue
             try:
-                await connection.send_text(message)
+                await ws.send_text(message)
+            except (WebSocketDisconnect, ClientDisconnected, RuntimeError):
+                # 予想どおりの切断は静かに回収（ログを汚さない）
+                stale.append(ws)
             except Exception as e:
-                print(f"[WebSocket] send error: {e}")
-                dead.append(connection)
-        for d in dead:
-            self.disconnect(d)
+                # 想定外だけ軽く1行ログ（スタックトレースは出さない）
+                print(f"[WebSocket] unexpected send error: {type(e).__name__}: {e}")
+                stale.append(ws)
+        for ws in stale:
+            self.disconnect(ws)
+
 
 
 class Setpoint(BaseModel):
@@ -53,7 +80,6 @@ class Setpoint(BaseModel):
     yaw_deg: float
 
 
-# FastAPI 準備
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -66,59 +92,119 @@ app.add_middleware(
 manager = ConnectionManager()
 mavlink_client = MavlinkClient()
 
-# 最新フレーム（JPEGバイト列）を保持
-latest_frame: Optional[bytes] = None
+# 受信した最新フレーム（JPEGバイト列と受信時刻）
+latest_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
 frame_lock = asyncio.Lock()
-# フレームが一定時間更新されなかったら途切れ扱い
-VIDEO_TIMEOUT_SEC = 3.0
 
-# UDPソケットと受信タスク（起動時に初期化）
-udp_sock: Optional[socket.socket] = None
-udp_task: Optional[asyncio.Task] = None
+# プレースホルダー画像（常にJPEGで持つ）
+placeholder_jpeg: Optional[bytes] = None
+placeholder_size: tuple[int, int] = PLACEHOLDER_DEFAULT_SIZE  # (w, h)
+last_frame_size: Optional[tuple[int, int]] = None  # 実フレームサイズが判明したら更新
 
-
-def create_udp_socket() -> socket.socket:
-    """UDPソケットを1つだけ生成して使い回す。"""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((UDP_FRAME_RECEIVE_IP, UDP_FRAME_RECEIVE_PORT))
-    sock.setblocking(False)
-    print(f"[udp] bound on {UDP_FRAME_RECEIVE_IP}:{UDP_FRAME_RECEIVE_PORT}")
-    return sock
+# UDP受信のTransport/Protocol
+udp_transport: Optional[asyncio.DatagramTransport] = None
+udp_protocol: Optional["UdpReceiverProtocol"] = None
 
 
-async def udp_frame_receiver():
-    """
-    Raspberry Pi からのフレームを常時受信し、latest_frame を更新する。
-    前提：1フレーム = 1 UDP データグラム（JPEGバイト列）
-    """
-    global latest_frame
-    loop = asyncio.get_running_loop()
-    assert udp_sock is not None, "udp_sock is not initialized"
+def build_placeholder(size: tuple[int, int], text: str = "NO CONNECTION") -> bytes:
+    """指定サイズにラベルを描いたJPEGプレースホルダーを作成"""
+    w, h = size
+    img = np.full((h, w, 3), 32, dtype=np.uint8)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    scale = 2.2
+    thickness = 4
+    text_size, _ = cv2.getTextSize(text, font, scale, thickness)
+    tx = (w - text_size[0]) // 2
+    ty = (h + text_size[1]) // 2
+    cv2.putText(img, text, (tx, ty), font, scale, (255, 255, 255), thickness, cv2.LINE_AA)
 
+    sub = "Waiting for UDP frames..."
+    sub_size, _ = cv2.getTextSize(sub, font, 0.9, 2)
+    sx = (w - sub_size[0]) // 2
+    sy = ty + 40 + sub_size[1]
+    cv2.putText(img, sub, (sx, sy), font, 0.9, (200, 200, 200), 2, cv2.LINE_AA)
+
+    ok, enc = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+    if not ok:
+        raise RuntimeError("Failed to build placeholder jpeg")
+    return enc.tobytes()
+
+
+async def _update_latest_frame(data: bytes, ts: float):
+    """最新フレームを更新し、初回はプレースホルダーのサイズも合わせる"""
+    global latest_frame, last_frame_size, placeholder_jpeg, placeholder_size
+    async with frame_lock:
+        latest_frame = {"data": data, "ts": ts}
+    if last_frame_size is None:
+        try:
+            arr = np.frombuffer(data, dtype=np.uint8)
+            img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            if img is not None:
+                h, w = img.shape[:2]
+                last_frame_size = (w, h)
+                if (w, h) != placeholder_size:
+                    placeholder_size = (w, h)
+                    placeholder_jpeg = build_placeholder(placeholder_size)
+                    print(f"[video] placeholder resized to {placeholder_size}")
+        except Exception:
+            pass
+
+
+class UdpReceiverProtocol(asyncio.DatagramProtocol):
+    """1データグラム=1JPEGフレームとして受信"""
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        self.transport = transport  # type: ignore[assignment]
+        sock = transport.get_extra_info("socket")
+        addr = sock.getsockname() if sock else ("?", "?")
+        print(f"[udp] listening on {addr}")
+
+    def datagram_received(self, data: bytes, addr) -> None:
+        try:
+            now = time.time()
+            asyncio.get_running_loop().create_task(_update_latest_frame(data, now))
+        except Exception as e:
+            print(f"[udp] datagram_received error: {repr(e)}")
+            traceback.print_exc()
+
+    def error_received(self, exc: Exception) -> None:
+        print(f"[udp] transport error: {repr(exc)}")
+
+    def connection_lost(self, exc: Optional[Exception]) -> None:
+        if exc:
+            print(f"[udp] connection lost: {repr(exc)}")
+        else:
+            print("[udp] connection closed cleanly")
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """テレメトリ（JSONテキスト）の配信用"""
+    await manager.connect(websocket)
+    print("[/ws] client connected")
     try:
         while True:
-            data, addr = await loop.sock_recvfrom(udp_sock, UDP_MAX_PAYLOAD)
-            now = time.time()
-            async with frame_lock:
-                latest_frame = {"data": data, "ts": now}
-            print(f"[udp] received frame: {len(data)} bytes from {addr}")
-    except asyncio.CancelledError:
-        print("[udp] receiver task cancelled")
-        raise
+            await asyncio.sleep(10)
+    except WebSocketDisconnect:
+        print("[/ws] client disconnected")
+        manager.disconnect(websocket)
     except Exception as e:
-        print(f"[udp] receiver error: {e}")
+        print(f"[/ws] error: {repr(e)}")
+        traceback.print_exc()
+    finally:
+        with contextlib.suppress(Exception):
+            await websocket.close()
 
 
 @app.websocket("/ws/video")
 async def video_stream(websocket: WebSocket):
-    """クライアント接続中のみ、最新フレーム（JPEG）を送信する。"""
+    """映像（JPEGバイナリ）を送信。途切れ時はプレースホルダー送信"""
     await websocket.accept()
     print("[/ws/video] client connected")
     try:
         interval = 1.0 / float(VIDEO_FPS)
         while True:
             await asyncio.sleep(interval)
+
             frame_data = None
             frame_ts = None
             async with frame_lock:
@@ -126,54 +212,30 @@ async def video_stream(websocket: WebSocket):
                     frame_data = latest_frame["data"]
                     frame_ts = latest_frame["ts"]
 
-            if frame_data is not None:
-                # フレームが古すぎる場合は途切れ通知
-                if time.time() - frame_ts > VIDEO_TIMEOUT_SEC:
-                    await websocket.send_text(json.dumps({
-                        "key": "streamLost",
-                        "value": {"timeout_sec": VIDEO_TIMEOUT_SEC}
-                    }))
-                else:
-                    await websocket.send_bytes(frame_data)
+            now = time.time()
+            stale = (frame_data is None) or (frame_ts is None) or (now - frame_ts > VIDEO_TIMEOUT_SEC)
+            if stale:
+                await websocket.send_bytes(placeholder_jpeg)  # type: ignore[arg-type]
+            else:
+                await websocket.send_bytes(frame_data)
     except WebSocketDisconnect:
         print("[/ws/video] client disconnected")
     except Exception as e:
-        print(f"[/ws/video] error: {e}")
-    finally:
-        with contextlib.suppress(Exception):
-            await websocket.close()
-
-
-@app.websocket("/ws/video")
-async def video_stream(websocket: WebSocket):
-    """クライアント接続中のみ、最新フレーム（JPEG）を送信する。"""
-    await websocket.accept()
-    print("[/ws/video] client connected")
-    try:
-        interval = 1.0 / float(VIDEO_FPS)
-        while True:
-            await asyncio.sleep(interval)
-            async with frame_lock:
-                frame = latest_frame
-            if frame is not None:
-                await websocket.send_bytes(frame)
-    except WebSocketDisconnect:
-        print("[/ws/video] client disconnected")
-    except Exception as e:
-        print(f"[/ws/video] error: {e}")
+        print(f"[/ws/video] error: {repr(e)}")
+        traceback.print_exc()
     finally:
         with contextlib.suppress(Exception):
             await websocket.close()
 
 
 async def periodic_task():
-    """30HzでMAVLinkテレメトリを取得し、/ws にブロードキャストする。"""
+    """30Hzでテレメトリをブロードキャスト"""
     try:
         while True:
             position = mavlink_client.get_drone_position()
             quaternion = mavlink_client.get_drone_quaternion()
+            sysid = 1
 
-            sysid = 1  # いまは固定。将来的に複数ドローン対応
             drone_pose = {
                 "key": "dronePoseUpdate",
                 "value": {
@@ -189,7 +251,8 @@ async def periodic_task():
         print("[periodic_task] cancelled")
         raise
     except Exception as e:
-        print(f"[periodic_task] error: {e}")
+        print(f"[periodic_task] error: {repr(e)}")
+        traceback.print_exc()
 
 
 @app.post("/start")
@@ -249,18 +312,31 @@ def send_enable_config_mode_signal():
 
 @app.on_event("startup")
 async def startup_event():
-    """アプリ起動時の初期化（UDP受信とテレメトリ送信タスクの起動）。"""
-    global udp_sock, udp_task
+    """起動時の初期化（UDP受信開始とテレメトリ送信タスク開始）"""
+    global udp_transport, udp_protocol, placeholder_jpeg
     print("[startup] FastAPI app starting...")
 
     try:
-        udp_sock = create_udp_socket()
-    except OSError as e:
-        print(f"[startup] UDP socket bind failed: {e}")
+        placeholder_jpeg = build_placeholder(placeholder_size)
+        print(f"[startup] placeholder ready: size={placeholder_size}")
+    except Exception as e:
+        print(f"[startup] placeholder build failed: {repr(e)}")
+        traceback.print_exc()
         raise
 
-    udp_task = asyncio.create_task(udp_frame_receiver())
-    print("[startup] udp_frame_receiver started")
+    try:
+        loop = asyncio.get_running_loop()
+        udp_transport, udp_protocol = await loop.create_datagram_endpoint(
+            lambda: UdpReceiverProtocol(),
+            local_addr=(UDP_FRAME_RECEIVE_IP, UDP_FRAME_RECEIVE_PORT),
+            family=socket.AF_INET,
+            reuse_port=False,
+        )
+        print("[startup] udp datagram endpoint started")
+    except Exception as e:
+        print(f"[startup] UDP endpoint create failed: {repr(e)}")
+        traceback.print_exc()
+        raise
 
     asyncio.create_task(periodic_task())
     print("[startup] periodic_task started")
@@ -268,17 +344,14 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """アプリ終了時の後始末。"""
+    """終了時の後始末"""
     print("[shutdown] stopping...")
 
-    if udp_task is not None:
-        udp_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await udp_task
-
-    if udp_sock is not None:
-        with contextlib.suppress(Exception):
-            udp_sock.close()
+    try:
+        if udp_transport is not None:
+            udp_transport.close()
+    except Exception as e:
+        print(f"[shutdown] udp transport close error: {repr(e)}")
 
     with contextlib.suppress(Exception):
         mavlink_client.stop()
