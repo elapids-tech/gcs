@@ -74,5 +74,16 @@ class MavlinkClient:
             1, 0, 0, 0, 0, 0, 0
         )
 
+    def set_bin_threshold(self, threshold: int):
+        """
+        2値化の閾値を設定する。
+        """
+        self.mav.mav.command_long_send(
+            self.target_sysid, self.target_compid,
+            31001,  # MAV_CMD_MY_APP_SET_BIN_THRESHOLD
+            0,
+            threshold, 0, 0, 0, 0, 0, 0
+        )
+
     def __del__(self):
         self.stop()
