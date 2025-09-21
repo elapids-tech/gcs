@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect, WebSocketState
 
+from backend.drone_settings import DroneSettings
 from backend.mavlink_client import MavlinkClient
 
 try:
@@ -91,6 +92,7 @@ app.add_middleware(
 
 manager = ConnectionManager()
 mavlink_client = MavlinkClient()
+drone_settings = DroneSettings()
 
 # 受信した最新フレーム（JPEGバイト列と受信時刻）
 latest_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
@@ -105,6 +107,8 @@ last_frame_size: Optional[tuple[int, int]] = None  # 実フレームサイズが
 udp_transport: Optional[asyncio.DatagramTransport] = None
 udp_protocol: Optional["UdpReceiverProtocol"] = None
 
+drone_settings.set_drone_id(1)
+drone_settings.set_ip_address("192.168.0.5")
 
 def build_placeholder(size: tuple[int, int], text: str = "NO CONNECTION") -> bytes:
     """指定サイズにラベルを描いたJPEGプレースホルダーを作成"""
@@ -227,6 +231,23 @@ async def video_stream(websocket: WebSocket):
         with contextlib.suppress(Exception):
             await websocket.close()
 
+@app.post("/config-mode/set-bin-threshold")
+async def set_bin_threshold(threshold: int):
+    """2値化の閾値を設定"""
+    if not (0 <= threshold <= 255):
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": "Threshold must be between 0 and 255."},
+        )
+    mavlink_client.set_bin_threshold(threshold)
+    drone_settings.set_bin_threshold(threshold)
+    return {"status": "ok", "message": f"Binary threshold set to {threshold}."}
+
+@app.get("/config-mode/get-bin-threshold")
+async def get_bin_threshold():
+    """2値化の閾値を取得"""
+    threshold = drone_settings.bin_threshold
+    return {"status": "ok", "bin_threshold": threshold}
 
 async def periodic_task():
     """30Hzでテレメトリをブロードキャスト"""
