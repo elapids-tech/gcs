@@ -74,16 +74,24 @@ class MavlinkClient:
             1, 0, 0, 0, 0, 0, 0
         )
 
-    def set_bin_threshold(self, threshold: int):
+    def send_bin_threshold(self, threshold: int) -> bool:
         """
-        2値化の閾値を設定する。
+        2値化の閾値をコンパニオンに向けて送信し、ACKを受信できたかで成功/失敗を返す。
         """
         self.mav.mav.command_long_send(
             self.target_sysid, self.target_compid,
             31001,  # MAV_CMD_MY_APP_SET_BIN_THRESHOLD
-            0,
+            0, 
             threshold, 0, 0, 0, 0, 0, 0
         )
+        try:
+            msg = self.mav.recv_match(type='COMMAND_ACK', blocking=True, timeout=2)
+            if msg and msg.command == 31001 and msg.result == mavutil.mavlink.MAV_RESULT_ACCEPTED:
+                return True
+            else:
+                return False
+        except Exception:
+            return False
 
     def __del__(self):
         self.stop()

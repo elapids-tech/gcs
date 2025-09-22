@@ -239,7 +239,7 @@ async def set_bin_threshold(threshold: int):
             status_code=400,
             content={"status": "error", "message": "Threshold must be between 0 and 255."},
         )
-    mavlink_client.set_bin_threshold(threshold)
+    mavlink_client.send_bin_threshold(threshold)
     drone_settings.set_bin_threshold(threshold)
     return {"status": "ok", "message": f"Binary threshold set to {threshold}."}
 
