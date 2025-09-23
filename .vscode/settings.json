@@ -5,6 +5,7 @@
     "python-envs.defaultEnvManager": "ms-python.python:system",
     "python-envs.pythonProjects": [],
     "python.testing.pytestArgs": [
+        "-s",
         "backend/test"
     ],
     "python.testing.unittestEnabled": false,
