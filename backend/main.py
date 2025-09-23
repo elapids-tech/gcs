@@ -23,7 +23,7 @@ except ImportError:
     class ClientDisconnected(Exception):
         pass 
 
-# 設定
+# カメラフレームストリーミング 受信設定
 UDP_FRAME_RECEIVE_IP = "0.0.0.0"
 UDP_FRAME_RECEIVE_PORT = 5001
 UDP_MAX_PAYLOAD = 65507
@@ -91,7 +91,7 @@ app.add_middleware(
 )
 
 manager = ConnectionManager()
-mavlink_client = MavlinkClient(host="192.168.0.6")
+mavlink_client = MavlinkClient(host="192.168.0.5")
 drone_settings = DroneSettings()
 
 # 受信した最新フレーム（JPEGバイト列と受信時刻）
@@ -106,9 +106,6 @@ last_frame_size: Optional[tuple[int, int]] = None  # 実フレームサイズが
 # UDP受信のTransport/Protocol
 udp_transport: Optional[asyncio.DatagramTransport] = None
 udp_protocol: Optional["UdpReceiverProtocol"] = None
-
-drone_settings.set_drone_id(1)
-drone_settings.set_ip_address("192.168.0.5")
 
 def build_placeholder(size: tuple[int, int], text: str = "NO CONNECTION") -> bytes:
     """指定サイズにラベルを描いたJPEGプレースホルダーを作成"""
@@ -231,6 +228,7 @@ async def video_stream(websocket: WebSocket):
         with contextlib.suppress(Exception):
             await websocket.close()
 
+
 @app.post("/config-mode/set-bin-threshold")
 async def set_bin_threshold(threshold: int):
     """2値化の閾値を設定"""
@@ -243,11 +241,19 @@ async def set_bin_threshold(threshold: int):
     drone_settings.set_bin_threshold(threshold)
     return {"status": "ok", "message": f"Binary threshold set to {threshold}."}
 
+
 @app.get("/config-mode/get-bin-threshold")
 async def get_bin_threshold():
     """2値化の閾値を取得"""
     threshold = drone_settings.bin_threshold
     return {"status": "ok", "bin_threshold": threshold}
+
+
+@app.post("/config-mode/keep-alive")
+def send_enable_config_mode_signal():
+    mavlink_client.set_config_mode_signal()
+    return {"status": "ok"}
+
 
 async def periodic_task():
     """30Hzでテレメトリをブロードキャスト"""
@@ -323,12 +329,6 @@ def set_setpoint(setpoint: Setpoint):
         status_code=200,
         content={"status": "success", "message": "Setpoint command sent to drone."},
     )
-
-
-@app.post("/config-mode/keep-alive")
-def send_enable_config_mode_signal():
-    mavlink_client.set_config_mode_signal()
-    return {"status": "ok"}
 
 
 @app.on_event("startup")
