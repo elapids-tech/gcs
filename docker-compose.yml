@@ -10,6 +10,7 @@ services:
       - "8003:8000"
       - "5001:5001/udp"
       - "14610:14610/udp"
+      - "14611:14611/udp"
     volumes:
       - ./:/idls_app
     tty: true
