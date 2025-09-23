@@ -19,7 +19,7 @@ flowchart LR
   FCU["FCU"]
 
   SERVER    --> |UDP 14610| DAPP
-  DAPP    --> |UDP 14610| SERVER
+  DAPP    --> |UDP 14611| SERVER
   ROUTER --> |UDP 14550| QGC
   QGC    --> ROUTER
   DAPP    --> |UDP 14600| ROUTER
