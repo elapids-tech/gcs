@@ -186,6 +186,24 @@ class MavlinkClient:
         except Exception:
             return False
 
+    def send_recording_param(self, is_recording: bool):
+        """
+        録画パラメータコマンドを送信。
+        """
+        send_recording_param = 0
+        if is_recording == True:
+            send_recording_param = 1
+        else:
+            send_recording_param = 0
+
+        self.mav_out.mav.command_long_send(
+            self.target_sysid,
+            self.target_compid,
+            31002,  # MAV_CMD_MY_APP_RECORDING_PARAM
+            0,
+            send_recording_param, 0, 0, 0, 0, 0, 0,
+        )
+    
     def __del__(self):
         """
         デストラクタ。明示的にstop()が呼ばれない場合でも可能な限りクリーンアップ。
