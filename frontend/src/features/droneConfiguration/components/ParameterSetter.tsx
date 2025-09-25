@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 
 const ParameterSetter: React.FC = () => {
   const [threshold, setThreshold] = useState<number>(128);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
 
   // ページ読み込み時に現在のしきい値を取得
   useEffect(() => {
@@ -28,6 +29,19 @@ const ParameterSetter: React.FC = () => {
     }).catch((e) => console.warn("threshold送信失敗:", e));
   };
 
+  const toggleRecording = () => {
+    const endpoint = isRecording
+      ? "http://localhost:8003/config-mode/stop-recording"
+      : "http://localhost:8003/config-mode/start-recording";
+
+    fetch(endpoint, { method: "POST" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to toggle recording");
+        setIsRecording(!isRecording);
+      })
+      .catch((e) => console.warn("録画トグル失敗:", e));
+  };
+
   return (
     <div>
       <h3>パラメータ設定</h3>
@@ -43,6 +57,11 @@ const ParameterSetter: React.FC = () => {
           style={{ width: "100%" }}
         />
       </label>
+      <div style={{ marginTop: "16px" }}>
+        <button onClick={toggleRecording} style={{ padding: "8px 16px" }}>
+          {isRecording ? "録画停止" : "録画開始"}
+        </button>
+      </div>
     </div>
   );
 };
