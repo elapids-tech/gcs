@@ -20,6 +20,17 @@ def test_send_bin_threshold():
     print(f"send_bin_threshold result: {result}")
     assert result is True, "send_bin_threshold failed"
 
+def test_control_recording():
+    mavlink_client = MavlinkClient(host="drone")
+
+    result = mavlink_client.send_recording_param(True)
+    print(f"send_recording_param result: {result}")
+    assert result is True, "send_recording_param failed"
+
+    result = mavlink_client.send_recording_param(False)
+    print(f"send_recording_param result: {result}")
+    assert result is True, "send_recording_param failed"
+
 
 if __name__ == "__main__":
     # test_send_heartbeat_three_times()
