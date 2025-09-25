@@ -255,6 +255,16 @@ def send_enable_config_mode_signal():
     return {"status": "ok"}
 
 
+@app.post("/config-mode/start-recording")
+async def start_recording():
+    mavlink_client.send_recording_param(True)
+    return {"status": "ok"}
+
+@app.post("/config-mode/stop-recording")
+async def stop_recording():
+    mavlink_client.send_recording_param(False)
+    return {"status": "ok"}
+
 async def periodic_task():
     """30Hzでテレメトリをブロードキャスト"""
     try:
