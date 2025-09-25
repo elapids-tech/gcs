@@ -21,6 +21,10 @@ def test_send_bin_threshold():
     assert result is True, "send_bin_threshold failed"
 
 def test_control_recording():
+    """
+    テストシナリオ
+    
+    """
     mavlink_client = MavlinkClient(host="drone")
 
     result = mavlink_client.send_recording_param(True)
