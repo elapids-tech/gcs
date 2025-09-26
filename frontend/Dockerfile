@@ -1,16 +1,12 @@
 FROM node:18-alpine
 
-# 必要なツールをインストール
-RUN apk add --no-cache bash python3 make g++
-
+# Set working director
 WORKDIR /idls_app/frontend
 
-# 依存関係だけコピーしてインストール
+# COPY --chown=node:node package*.json ./
 COPY package*.json ./
-RUN npm ci
 
-# アプリ全体をコピー
-COPY . .
+RUN npm install
 
 EXPOSE 3000
 
