@@ -32,7 +32,7 @@ services:
     ports:
       - '3000:3000'
     volumes:
-      - ./frontend:/idls_app/frontend:cached
+      - ./frontend:/idls_app/frontend
       - node_modules:/idls_app/frontend/node_modules
     networks:
       - udp_network
