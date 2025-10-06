@@ -1,11 +1,17 @@
-import React, { useEffect, useState, useMemo, useCallback, useRef, memo } from 'react';
-import * as THREE from "three";
-import { Canvas } from '@react-three/fiber'
-import { Grid, Line, GizmoHelper, GizmoViewport, OrbitControls, Environment, Sphere, Box } from '@react-three/drei'
-import Split from "react-split";
+import React, { useEffect, useState, useRef } from 'react';
+import * as THREE from 'three';
+import { Canvas } from '@react-three/fiber';
+import { Grid, Line, GizmoHelper, GizmoViewport, OrbitControls, Environment, Sphere } from '@react-three/drei';
+import { DroneConfigurationPage } from './features/droneConfiguration';
+import Split from 'react-split';
 import './styles.css';
 
+
+// Z-up をグローバルで一度だけ
+THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
+
 // === 型定義 ===
+type Vec3 = [number, number, number];
 
 type Landmarks = {
   id: string;
@@ -21,33 +27,28 @@ type DronePose = {
 };
 
 type WebSocketMessage =
-  | { key: "setLandmarks"; value: Landmarks[] }
-  | { key: "dronePoseUpdate"; value: DronePose };
+  | { key: 'setLandmarks'; value: Landmarks[] }
+  | { key: 'dronePoseUpdate'; value: DronePose };
 
 // === 色マップ ===
-
 const colorMap: { [key: string]: string } = {
-  "1": "red",
-  "2": "blue",
-  "3": "green",
-  "4": "orange",
-  "5": "purple",
-  "6": "yellow",
+  '1': 'red',
+  '2': 'blue',
+  '3': 'green',
+  '4': 'orange',
+  '5': 'purple',
+  '6': 'yellow',
 };
-
-const getColorForId = (id: number | string): string => {
-  const idStr = id.toString();
-  return colorMap[idStr] || "gray";
-};
+const getColorForId = (id: number | string): string => colorMap[id.toString()] || 'gray';
 
 const Viewer3d: React.FC = () => {
   const gridConfig = {
     cellSize: 1,
     cellThickness: 0.5,
-    sectionSize: 3,
+    sectionSize: 5,
     sectionThickness: 1.5,
     followCamera: true,
-    infiniteGrid: true
+    infiniteGrid: true,
   };
 
   const [landmarks, setLandmarks] = useState<Landmarks[]>([]);
@@ -56,42 +57,30 @@ const Viewer3d: React.FC = () => {
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:8003/ws');
 
-    ws.onopen = () => {
-      console.log("WebSocket connection established");
-    };
-
+    ws.onopen = () => console.log('WebSocket connection established');
     ws.onmessage = (event) => {
       const data: WebSocketMessage = JSON.parse(event.data);
-
       switch (data.key) {
-        case "setLandmarks":
+        case 'setLandmarks':
           setLandmarks(data.value);
           break;
-        case "dronePoseUpdate":
+        case 'dronePoseUpdate':
           setDronePose(data.value);
           break;
         default:
           console.warn(`Unknown key: ${(data as any).key}`);
       }
     };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-
-    return () => {
-      ws.close();
-    };
+    ws.onerror = (error) => console.error('WebSocket error:', error);
+    ws.onclose = () => console.log('WebSocket connection closed');
+    return () => ws.close();
   }, []);
 
-  THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
-
-  // === ドローンの姿勢軸を生成 ===
-  const getDroneAxes = (position: [number, number, number], quaternion: [number, number, number, number]) => {
+  // ドローン姿勢のxyz軸（points は二次元配列）
+  const getDroneAxes = (
+    position: [number, number, number],
+    quaternion: [number, number, number, number]
+  ) => {
     const pos = new THREE.Vector3(...position);
     const quat = new THREE.Quaternion(...quaternion);
     const length = 0.3;
@@ -104,62 +93,50 @@ const Viewer3d: React.FC = () => {
 
     return axes.map(({ dir, color }) => {
       const to = dir.clone().applyQuaternion(quat).multiplyScalar(length).add(pos);
-      return {
-        points: [pos.toArray(), to.toArray()].flat(), // [x1, y1, z1, x2, y2, z2]
-        color
-      };
+      const fromArr: Vec3 = [pos.x, pos.y, pos.z];
+      const toArr:   Vec3 = [to.x,  to.y,  to.z ];
+      return { points: [fromArr, toArr] as [Vec3, Vec3], color };
     });
   };
 
-  const centerAxis = [
-    {
-      points: [0, 0, 0, 1, 0, 0],
-      color: 'red'
-    },
-    {
-      points: [0, 0, 0, 0, 1, 0],
-      color: 'green'
-    },
-    {
-      points: [0, 0, 0, 0, 0, 1],
-      color: 'blue'
-    }
+  const centerAxis: { points: [Vec3, Vec3]; color: string }[] = [
+    { points: [[0, 0, 0], [1, 0, 0]], color: 'red' },
+    { points: [[0, 0, 0], [0, 1, 0]], color: 'green' },
+    { points: [[0, 0, 0], [0, 0, 1]], color: 'blue' }
   ];
 
   return (
-    <Canvas className='left' camera={{ position: [10, 12, 12], fov: 25 }} style={{ border: "1px solid red" }}>
+    <Canvas
+      className="canvas"
+      camera={{ position: [10, 12, 12], fov: 25 }}
+    >
+      <color attach="background" args={['#a9a9a9']} />
       <group position={[0, 0, 0]}>
-        {/* グリッド */}
+        {/* グリッド（Z-up のため X 軸回りに 90 度回転） */}
         <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]} args={[10, 10]} {...gridConfig} />
 
         {/* 世界座標中心軸 */}
-        {centerAxis.map((line, index) => (
-          <Line key={`center-axis-${index}`} points={line.points} color={line.color} lineWidth={2} />
+        {centerAxis.map((line, i) => (
+          <Line key={`center-axis-${i}`} points={line.points} color={line.color} lineWidth={2} />
         ))}
 
         {/* ランドマーク */}
-        {landmarks.map((center) => (
-          <Sphere
-            key={center.id}
-            args={[0.03, 32, 32]}
-            position={[center.x, center.y, center.z]}
-          >
-            <meshStandardMaterial attach="material" color={getColorForId(center.id)} />
+        {landmarks.map((lm) => (
+          <Sphere key={lm.id} args={[0.06, 32, 32]} position={[lm.x, lm.y, lm.z]}>
+            <meshStandardMaterial color={getColorForId(lm.id)} />
           </Sphere>
         ))}
 
         {/* ドローン姿勢のxyz軸 */}
         {dronePose &&
-          getDroneAxes(dronePose.position, dronePose.quaternion).map((axis, index) => (
-            <Line
-              key={`drone-axis-${index}`}
-              points={axis.points}
-              color={axis.color}
-              lineWidth={2}
-            />
-          ))
-        }
+          getDroneAxes(dronePose.position, dronePose.quaternion).map((axis, i) => (
+            <Line key={`drone-axis-${i}`} points={axis.points} color={axis.color} lineWidth={2} />
+          ))}
       </group>
+
+      {/* 環境 */}
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[5, 5, 5]} intensity={0.8} />
 
       {/* カメラ操作 */}
       <OrbitControls makeDefault enableDamping={false} />
@@ -172,68 +149,25 @@ const Viewer3d: React.FC = () => {
 };
 
 const DroneControlPanel: React.FC = () => {
-  const containerRef = useRef(null);
-  const [containerHeight, setContainerHeight] = useState(0);
-
   // Setpoint用 state
   const [x, setX] = useState('');
   const [y, setY] = useState('');
   const [z, setZ] = useState('');
   const [yaw, setYaw] = useState('');
 
-  const handleClickArm = () => {
-    fetch('http://localhost:8003/arm', {
+  const post = (path: string, body?: any) =>
+    fetch(`http://localhost:8003/${path}`, {
       method: 'POST',
-    })
-      .then(response => response.json())
-      .then(data => console.log(data))
-      .catch(error => console.error('Error:', error));
-  };
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    }).then((r) => r.json());
 
-  const handleClickDisarm = () => {
-    fetch('http://localhost:8003/disarm', {
-      method: 'POST',
-    })
-      .then(response => response.json())
-      .then(data => console.log(data))
-      .catch(error => console.error('Error:', error));
-  };
-
-  const handleClickGuideMode = () => {
-    fetch('http://localhost:8003/guide', {
-      method: 'POST',
-    })
-      .then(response => response.json())
-      .then(data => console.log(data))
-      .catch(error => console.error('Error:', error));
-  };
-
-  const handleClickAutoMode = () => {
-    fetch('http://localhost:8003/auto', {
-      method: 'POST',
-    })
-      .then(response => response.json())
-      .then(data => console.log(data))
-      .catch(error => console.error('Error:', error));
-  };
-
-  const handleClickStart = () => {
-    fetch('http://localhost:8003/start', {
-      method: 'POST',
-    })
-      .then(response => response.json())
-      .then(data => console.log(data))
-      .catch(error => console.error('Error:', error));
-  };
-
-  const handleClickStop = () => {
-    fetch('http://localhost:8003/stop', {
-      method: 'POST',
-    })
-      .then(response => response.json())
-      .then(data => console.log(data))
-      .catch(error => console.error('Error:', error));
-  };
+  const handleClickArm = () => post('arm').then(console.log).catch(console.error);
+  const handleClickDisarm = () => post('disarm').then(console.log).catch(console.error);
+  const handleClickGuideMode = () => post('guide').then(console.log).catch(console.error);
+  const handleClickAutoMode = () => post('auto').then(console.log).catch(console.error);
+  const handleClickStart = () => post('start').then(console.log).catch(console.error);
+  const handleClickStop = () => post('stop').then(console.log).catch(console.error);
 
   const handleClickSetpoint = () => {
     const payload = {
@@ -242,42 +176,13 @@ const DroneControlPanel: React.FC = () => {
       z: parseFloat(z),
       yaw_deg: parseFloat(yaw),
     };
-
-    fetch('http://localhost:8003/set-setpoint', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-      .then(res => res.json())
-      .then(data => console.log(data))
-      .catch(err => console.error('Error:', err));
+    post('set-setpoint', payload).then(console.log).catch(console.error);
   };
 
-  useEffect(() => {
-    const resizeObserver = new ResizeObserver(entries => {
-      for (let entry of entries) {
-        if (entry.target === containerRef.current) {
-          setContainerHeight(entry.contentRect.height);
-        }
-      }
-    });
-
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => {
-      if (containerRef.current) {
-        resizeObserver.unobserve(containerRef.current);
-      }
-    };
-  }, []);
-
   return (
-    <div className='right' style={{ border: "1px solid red", height: '100%', overflowY: 'auto'}}>
-      <div style={{ minHeight: containerHeight + 100 }}>
-        <div className='bottons-column'>
-
+    <div className="panel">
+      <div className="panel-inner">
+        <div className="bottons-column">
           <h2>Telemetry</h2>
 
           <h2>Control</h2>
@@ -289,24 +194,29 @@ const DroneControlPanel: React.FC = () => {
           <h2>Setpoint</h2>
           <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '200px' }}>
             <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
-              X:<input type="number" value={x} onChange={(e) => setX(e.target.value)} style={{ width: '100px', margin: 0 }} />
+              X:
+              <input type="number" value={x} onChange={(e) => setX(e.target.value)} style={{ width: '100px', margin: 0 }} />
             </label>
             <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
-              Y:<input type="number" value={y} onChange={(e) => setY(e.target.value)} style={{ width: '100px', margin: 0 }} />
+              Y:
+              <input type="number" value={y} onChange={(e) => setY(e.target.value)} style={{ width: '100px', margin: 0 }} />
             </label>
             <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
-              Z:<input type="number" value={z} onChange={(e) => setZ(e.target.value)} style={{ width: '100px', margin: 0 }} />
+              Z:
+              <input type="number" value={z} onChange={(e) => setZ(e.target.value)} style={{ width: '100px', margin: 0 }} />
             </label>
             <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
-              Yaw:<input type="number" value={yaw} onChange={(e) => setYaw(e.target.value)} style={{ width: '100px', margin: 0 }} />
+              Yaw:
+              <input type="number" value={yaw} onChange={(e) => setYaw(e.target.value)} style={{ width: '100px', margin: 0 }} />
             </label>
-            <button onClick={handleClickSetpoint} style={{ padding: '4px 8px', margin: '4px 0 0 0' }}>Set</button>
+            <button onClick={handleClickSetpoint} style={{ padding: '4px 8px', margin: '4px 0 0 0' }}>
+              Set
+            </button>
           </div>
 
           <h2>No function</h2>
           <button onClick={handleClickStart}>Start</button>
           <button onClick={handleClickStop}>Stop</button>
-          
         </div>
       </div>
     </div>
@@ -314,30 +224,58 @@ const DroneControlPanel: React.FC = () => {
 };
 
 function MainLayout() {
+  const [activeTab, setActiveTab] = useState<'preview' | 'config'>('preview');
+
   return (
     <div className="main-layout">
-      <Split
-        className="top"
-        sizes={[70, 30]}
-        minSize={300}
-        expandToMin={false}
-        gutterSize={10}
-        gutterAlign="center"
-        snapOffset={30}
-        dragInterval={1}
-        direction="horizontal"
-        cursor="col-resize">
-        <Viewer3d />
-        <DroneControlPanel />
-      </Split>
+      {/* 上部の切替ボタン */}
+      <div className="top-bar">
+        <button
+          className={activeTab === 'preview' ? 'active' : ''}
+          onClick={() => setActiveTab('preview')}
+        >
+          プレビュー
+        </button>
+        <button
+          className={activeTab === 'config' ? 'active' : ''}
+          onClick={() => setActiveTab('config')}
+        >
+          コンフィグレーション
+        </button>
+      </div>
+
+      {/* メイン画面 */}
+      <div className="main-content">
+        {activeTab === 'preview' ? (
+          <Split
+            className="split"
+            sizes={[70, 30]}
+            minSize={300}
+            gutterSize={10}
+            direction="horizontal"
+          >
+            <div className="pane pane-left">
+              <Viewer3d />
+            </div>
+            <div className="pane pane-right">
+              <DroneControlPanel />
+            </div>
+          </Split>
+        ) : (
+          <div className="config-panel">
+            <DroneConfigurationPage />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
+
 const App = () => {
   return (
     <div className="app">
-      <MainLayout/>
+      <MainLayout />
     </div>
   );
 };

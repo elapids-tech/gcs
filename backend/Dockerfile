@@ -3,6 +3,11 @@ FROM python:3.11-slim
 
 # 必要なパッケージをインストール
 RUN apt-get update && apt-get install -y \
+    bash \
+    coreutils \
+    procps \
+    netcat-openbsd \
+    curl \
     git \
     ca-certificates \
     gcc \
@@ -13,7 +18,7 @@ RUN apt-get update && apt-get install -y \
     libxslt1-dev \
     zlib1g-dev \
     iputils-ping \
-    netcat-openbsd \
+    tcpdump \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -27,5 +32,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # スクリプトをコンテナにコピー
 COPY main.py .
 
-# Uvicornを実行
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["sleep", "infinity"]

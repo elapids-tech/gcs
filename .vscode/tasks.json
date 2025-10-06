@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start FastAPI (uvicorn)",
+      "type": "shell",
+      "command": "uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload &",
+      "problemMatcher": []
+    },
+    {
+      "label": "Start FastAPI (uvicorn output log)",
+      "type": "shell",
+      "command": "uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload",
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop FastAPI (pkill)",
+      "type": "shell",
+      "command": "pkill -f uvicorn || true",
+      "problemMatcher": []
+    },
+    {
+      "label": "Check FastAPI status (curl)",
+      "type": "shell",
+      "command": "curl -s http://127.0.0.1:8000 || true",
+      "problemMatcher": []
+    }
+  ]
+}

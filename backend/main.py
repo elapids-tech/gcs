@@ -1,17 +1,39 @@
 import json
+import time
 import asyncio
+import socket
+import contextlib
+import traceback
+from typing import Optional
+
+import cv2
+import numpy as np
 from pydantic import BaseModel
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from radio import DroneController
-from threading import Lock
+from starlette.websockets import WebSocketDisconnect, WebSocketState
 
-REMOTE_IP = "192.168.0.3"
-REMOTE_PORT = 14551
-LOCAL_PORT = 14550
+from backend.drone_settings import DroneSettings
+from backend.mavlink_client import MavlinkClient
+
+try:
+    from uvicorn.protocols.utils import ClientDisconnected
+except ImportError:
+    class ClientDisconnected(Exception):
+        pass 
+
+# カメラフレームストリーミング 受信設定
+UDP_FRAME_RECEIVE_IP = "0.0.0.0"
+UDP_FRAME_RECEIVE_PORT = 5001
+UDP_MAX_PAYLOAD = 65507
+VIDEO_FPS = 15
+VIDEO_TIMEOUT_SEC = 3.0
+PLACEHOLDER_DEFAULT_SIZE = (1280, 800)  # (w, h)
+
 
 class ConnectionManager:
+    """テレメトリ用のWebSocket接続管理"""
     def __init__(self):
         self.active_connections: list[WebSocket] = []
 
@@ -23,27 +45,34 @@ class ConnectionManager:
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
 
+    def _is_connected(self, ws: WebSocket) -> bool:
+        # Starlette 5系なら WebSocketState.CONNECTED。古い場合は属性が無いこともあるので防御的に。
+        try:
+            return ws.client_state == WebSocketState.CONNECTED
+        except Exception:
+            return True  # 状態が取れない実装でも送ってみてだめならexceptで外す
+
     async def broadcast(self, message: str):
-        for connection in self.active_connections:
+        # 送信中に書き換えられないようコピーで回す
+        stale: list[WebSocket] = []
+        for ws in list(self.active_connections):
+            # 明らかに切れてるものは送らない
+            if not self._is_connected(ws):
+                stale.append(ws)
+                continue
             try:
-                await connection.send_text(message)
+                await ws.send_text(message)
+            except (WebSocketDisconnect, ClientDisconnected, RuntimeError):
+                # 予想どおりの切断は静かに回収（ログを汚さない）
+                stale.append(ws)
             except Exception as e:
-                print(f"WebSocket send error: {e}")
-                self.disconnect(connection)
+                # 想定外だけ軽く1行ログ（スタックトレースは出さない）
+                print(f"[WebSocket] unexpected send error: {type(e).__name__}: {e}")
+                stale.append(ws)
+        for ws in stale:
+            self.disconnect(ws)
 
-class ProjectManager:
-    def __init__(self):
-        self.landmarks = []
-        self.drone_pose = None
 
-    def add_landmark(self, id, x, y, z):
-        self.landmarks.append({"id": id, "x": x, "y": y, "z": z})
-
-    def update_drone_pose(self, position, quaternion):
-        self.drone_pose = {
-            "position": position,
-            "quaternion": quaternion
-        }
 
 class Setpoint(BaseModel):
     x: float
@@ -51,13 +80,8 @@ class Setpoint(BaseModel):
     z: float
     yaw_deg: float
 
-manager = ConnectionManager()
-project = ProjectManager()
-drone_ctl = None
-drone_ctl_lock = Lock()
 
 app = FastAPI()
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -66,164 +90,301 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/start")
-def start():
-    global drone_ctl
-    with drone_ctl_lock:
-        if drone_ctl is None:
-            drone_ctl = DroneController(
-                remote_ip=REMOTE_IP,
-                remote_port=REMOTE_PORT,
-                local_port=LOCAL_PORT
-            )
-            print("[/start] DroneController instance created and communication started.")
-            return {"status": "started"}
-        else:
-            print("[/start] DroneController already exists.")
-            return {"status": "already running"}
+manager = ConnectionManager()
+mavlink_client = MavlinkClient(host="192.168.0.2")
+drone_settings = DroneSettings()
 
-@app.post("/stop")
-def stop():
-    global drone_ctl
-    with drone_ctl_lock:
-        if drone_ctl is not None:
-            drone_ctl.stop()
-            drone_ctl = None
-            print("[/stop] DroneController stopped and instance deleted.")
-            return {"status": "stopped"}
+# 受信した最新フレーム（JPEGバイト列と受信時刻）
+latest_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
+frame_lock = asyncio.Lock()
+
+# プレースホルダー画像（常にJPEGで持つ）
+placeholder_jpeg: Optional[bytes] = None
+placeholder_size: tuple[int, int] = PLACEHOLDER_DEFAULT_SIZE  # (w, h)
+last_frame_size: Optional[tuple[int, int]] = None  # 実フレームサイズが判明したら更新
+
+# UDP受信のTransport/Protocol
+udp_transport: Optional[asyncio.DatagramTransport] = None
+udp_protocol: Optional["UdpReceiverProtocol"] = None
+
+def build_placeholder(size: tuple[int, int], text: str = "NO CONNECTION") -> bytes:
+    """指定サイズにラベルを描いたJPEGプレースホルダーを作成"""
+    w, h = size
+    img = np.full((h, w, 3), 32, dtype=np.uint8)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    scale = 2.2
+    thickness = 4
+    text_size, _ = cv2.getTextSize(text, font, scale, thickness)
+    tx = (w - text_size[0]) // 2
+    ty = (h + text_size[1]) // 2
+    cv2.putText(img, text, (tx, ty), font, scale, (255, 255, 255), thickness, cv2.LINE_AA)
+
+    sub = "Waiting for UDP frames..."
+    sub_size, _ = cv2.getTextSize(sub, font, 0.9, 2)
+    sx = (w - sub_size[0]) // 2
+    sy = ty + 40 + sub_size[1]
+    cv2.putText(img, sub, (sx, sy), font, 0.9, (200, 200, 200), 2, cv2.LINE_AA)
+
+    ok, enc = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+    if not ok:
+        raise RuntimeError("Failed to build placeholder jpeg")
+    return enc.tobytes()
+
+
+async def _update_latest_frame(data: bytes, ts: float):
+    """最新フレームを更新し、初回はプレースホルダーのサイズも合わせる"""
+    global latest_frame, last_frame_size, placeholder_jpeg, placeholder_size
+    async with frame_lock:
+        latest_frame = {"data": data, "ts": ts}
+    if last_frame_size is None:
+        try:
+            arr = np.frombuffer(data, dtype=np.uint8)
+            img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            if img is not None:
+                h, w = img.shape[:2]
+                last_frame_size = (w, h)
+                if (w, h) != placeholder_size:
+                    placeholder_size = (w, h)
+                    placeholder_jpeg = build_placeholder(placeholder_size)
+                    print(f"[video] placeholder resized to {placeholder_size}")
+        except Exception:
+            pass
+
+
+class UdpReceiverProtocol(asyncio.DatagramProtocol):
+    """1データグラム=1JPEGフレームとして受信"""
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        self.transport = transport  # type: ignore[assignment]
+        sock = transport.get_extra_info("socket")
+        addr = sock.getsockname() if sock else ("?", "?")
+        print(f"[udp] listening on {addr}")
+
+    def datagram_received(self, data: bytes, addr) -> None:
+        try:
+            now = time.time()
+            asyncio.get_running_loop().create_task(_update_latest_frame(data, now))
+        except Exception as e:
+            print(f"[udp] datagram_received error: {repr(e)}")
+            traceback.print_exc()
+
+    def error_received(self, exc: Exception) -> None:
+        print(f"[udp] transport error: {repr(exc)}")
+
+    def connection_lost(self, exc: Optional[Exception]) -> None:
+        if exc:
+            print(f"[udp] connection lost: {repr(exc)}")
         else:
-            print("[/stop] DroneController not running.")
-            return {"status": "not running"}
-        
-@app.get("/status")
-def get_status():
-    global drone_ctl
-    if drone_ctl is None:
-        return {"initialized": False, "running": False}
-    return {
-        "initialized": True,
-        "running": drone_ctl.is_running(),
-        "target_system": drone_ctl.target_system,
-    }
+            print("[udp] connection closed cleanly")
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    """テレメトリ（JSONテキスト）の配信用"""
     await manager.connect(websocket)
-    print("WebSocket connection established")
+    print("[/ws] client connected")
     try:
         while True:
-            await websocket.receive_text()
+            await asyncio.sleep(10)
     except WebSocketDisconnect:
+        print("[/ws] client disconnected")
         manager.disconnect(websocket)
-        print("WebSocket disconnected")
+    except Exception as e:
+        print(f"[/ws] error: {repr(e)}")
+        traceback.print_exc()
+    finally:
+        with contextlib.suppress(Exception):
+            await websocket.close()
+
+
+@app.websocket("/ws/video")
+async def video_stream(websocket: WebSocket):
+    """映像（JPEGバイナリ）を送信。途切れ時はプレースホルダー送信"""
+    await websocket.accept()
+    print("[/ws/video] client connected")
+    try:
+        interval = 1.0 / float(VIDEO_FPS)
+        while True:
+            await asyncio.sleep(interval)
+
+            frame_data = None
+            frame_ts = None
+            async with frame_lock:
+                if latest_frame is not None:
+                    frame_data = latest_frame["data"]
+                    frame_ts = latest_frame["ts"]
+
+            now = time.time()
+            stale = (frame_data is None) or (frame_ts is None) or (now - frame_ts > VIDEO_TIMEOUT_SEC)
+            if stale:
+                await websocket.send_bytes(placeholder_jpeg)  # type: ignore[arg-type]
+            else:
+                await websocket.send_bytes(frame_data)
+    except WebSocketDisconnect:
+        print("[/ws/video] client disconnected")
+    except Exception as e:
+        print(f"[/ws/video] error: {repr(e)}")
+        traceback.print_exc()
+    finally:
+        with contextlib.suppress(Exception):
+            await websocket.close()
+
+
+@app.post("/config-mode/set-bin-threshold")
+async def set_bin_threshold(threshold: int):
+    """2値化の閾値を設定"""
+    if not (0 <= threshold <= 255):
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": "Threshold must be between 0 and 255."},
+        )
+    mavlink_client.send_bin_threshold(threshold)
+    drone_settings.set_bin_threshold(threshold)
+    return {"status": "ok", "message": f"Binary threshold set to {threshold}."}
+
+
+@app.get("/config-mode/get-bin-threshold")
+async def get_bin_threshold():
+    """2値化の閾値を取得"""
+    threshold = drone_settings.bin_threshold
+    return {"status": "ok", "bin_threshold": threshold}
+
+
+@app.post("/config-mode/keep-alive")
+def send_enable_config_mode_signal():
+    mavlink_client.set_config_mode_signal()
+    return {"status": "ok"}
+
+
+@app.post("/config-mode/start-recording")
+async def start_recording():
+    mavlink_client.send_recording_param(True)
+    return {"status": "ok"}
+
+@app.post("/config-mode/stop-recording")
+async def stop_recording():
+    mavlink_client.send_recording_param(False)
+    return {"status": "ok"}
 
 async def periodic_task():
-    while True:
-        if drone_ctl and drone_ctl.is_running():
-            # sysidごとにTelemetry情報を分類して送信 将来的にまとめて送信するように変更する。
-            for sysid, t in getattr(drone_ctl, "telemetry_dict", {}).items():
-                drone_pose = { "key":"dronePoseUpdate" ,
-                               "value": { "sysid": sysid,
-                                          "position": list(t.position) if t.position is not None else [0.0, 0.0, 0.0],
-                                          "quaternion": list(t.quaternion) if t.quaternion is not None else [0.0, 0.0, 0.0, 1.0] }
-                }
+    """30Hzでテレメトリをブロードキャスト"""
+    try:
+        while True:
+            position = mavlink_client.get_drone_position()
+            quaternion = mavlink_client.get_drone_quaternion()
+            sysid = 1
 
-                await manager.broadcast(json.dumps(drone_pose))
+            drone_pose = {
+                "key": "dronePoseUpdate",
+                "value": {
+                    "sysid": sysid,
+                    "position": list(position),
+                    "quaternion": list(quaternion),
+                },
+            }
 
-        await asyncio.sleep(0.0333)  # 30 FPS
+            await manager.broadcast(json.dumps(drone_pose))
+            await asyncio.sleep(1.0 / 30.0)
+    except asyncio.CancelledError:
+        print("[periodic_task] cancelled")
+        raise
+    except Exception as e:
+        print(f"[periodic_task] error: {repr(e)}")
+        traceback.print_exc()
 
-@app.post("/upload/")
-async def upload_file(request: Request):
-    body = await request.body()
-    data = json.loads(body.decode('utf-8'))
 
-    project.landmarks.clear()
-    for landmark in data:
-        id = str(landmark['id'])
-        pos = landmark['center']
-        project.landmarks.append({"id": id, "x": pos[0], "y": pos[1], "z": pos[2]})
+@app.post("/start")
+def start():
+    print("[/start] start endpoint called")
+    return {"status": "ok", "message": "start called"}
 
-    send_data = {"key": "setLandmarks", "value": project.landmarks}
-    await manager.broadcast(json.dumps(send_data))
-    return {"state_message": 0}
 
-@app.post("/upload-image")
-async def upload_image(request: Request):
-    pass
+@app.post("/stop")
+def stop():
+    print("[/stop] stop endpoint called")
+    return {"status": "ok", "message": "stop called"}
+
 
 @app.post("/arm")
 def arm():
-    global drone_ctl
-    if drone_ctl:
-        print('arm pressed')
-        drone_ctl.set_arm(True)
-    return {"status": "arm command sent"}
+    print("[/arm] arm pressed")
+    return {"status": "ok", "message": "arm command sent"}
+
 
 @app.post("/disarm")
 def disarm():
-    global drone_ctl
-    if drone_ctl:
-        print('disarm pressed')
-        drone_ctl.set_arm(False)
-    return {"status": "disarm command sent"}
+    print("[/disarm] disarm pressed")
+    return {"status": "ok", "message": "disarm command sent"}
+
 
 @app.post("/guide")
 def set_guide_mode():
-    global drone_ctl
-    if drone_ctl:
-        print('guide pressed')
-        drone_ctl.set_mode('GUIDED')
-    return {"status": "GUIDED mode set"}
+    print("[/guide] guide pressed")
+    return {"status": "ok", "message": "GUIDED mode set"}
+
 
 @app.post("/auto")
 def set_auto_mode():
-    global drone_ctl
-    if drone_ctl:
-        print('auto pressed')
-        drone_ctl.set_mode('AUTO')
-    return {"status": "AUTO mode set"}
+    print("[/auto] auto pressed")
+    return {"status": "ok", "message": "AUTO mode set"}
+
 
 @app.post("/set-setpoint")
 def set_setpoint(setpoint: Setpoint):
-    global drone_ctl
-    if drone_ctl:
-        print("=== /set-setpoint endpoint called ===")
-        print(f"  x       = {setpoint.x}")
-        print(f"  y       = {setpoint.y}")
-        print(f"  z       = {setpoint.z}")
-        print(f"  yaw_deg = {setpoint.yaw_deg}")
-
-        drone_ctl.send_guided_position(setpoint.x, setpoint.y, setpoint.z, setpoint.yaw_deg)
-        print("Sent setpoint to drone_ctl.")
-
+    print("=== /set-setpoint endpoint called ===")
+    print(f"  x       = {setpoint.x}")
+    print(f"  y       = {setpoint.y}")
+    print(f"  z       = {setpoint.z}")
+    print(f"  yaw_deg = {setpoint.yaw_deg}")
     return JSONResponse(
         status_code=200,
-        content={"status": "success", "message": "Setpoint command sent to drone."}
+        content={"status": "success", "message": "Setpoint command sent to drone."},
     )
+
 
 @app.on_event("startup")
 async def startup_event():
-    global drone_ctl
-    with drone_ctl_lock:
-        if drone_ctl is None:
-            drone_ctl = DroneController(
-                remote_ip=REMOTE_IP,
-                remote_port=REMOTE_PORT,
-                local_port=LOCAL_PORT
-            )
-            print("[startup] DroneController instance created and communication started.")
-        else:
-            print("[startup] DroneController already initialized.")
-    print("[startup] FastAPI app started.")
+    """起動時の初期化（UDP受信開始とテレメトリ送信タスク開始）"""
+    global udp_transport, udp_protocol, placeholder_jpeg
+    print("[startup] FastAPI app starting...")
+
+    try:
+        placeholder_jpeg = build_placeholder(placeholder_size)
+        print(f"[startup] placeholder ready: size={placeholder_size}")
+    except Exception as e:
+        print(f"[startup] placeholder build failed: {repr(e)}")
+        traceback.print_exc()
+        raise
+
+    try:
+        loop = asyncio.get_running_loop()
+        udp_transport, udp_protocol = await loop.create_datagram_endpoint(
+            lambda: UdpReceiverProtocol(),
+            local_addr=(UDP_FRAME_RECEIVE_IP, UDP_FRAME_RECEIVE_PORT),
+            family=socket.AF_INET,
+            reuse_port=False,
+        )
+        print("[startup] udp datagram endpoint started")
+    except Exception as e:
+        print(f"[startup] UDP endpoint create failed: {repr(e)}")
+        traceback.print_exc()
+        raise
 
     asyncio.create_task(periodic_task())
-    print("[startup] periodic_task started as background task.")
+    print("[startup] periodic_task started")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    global drone_ctl
-    with drone_ctl_lock:
-        if drone_ctl:
-            drone_ctl.stop()
-            drone_ctl = None
-            print("[shutdown] DroneController stopped and instance deleted.")
+    """終了時の後始末"""
+    print("[shutdown] stopping...")
+
+    try:
+        if udp_transport is not None:
+            udp_transport.close()
+    except Exception as e:
+        print(f"[shutdown] udp transport close error: {repr(e)}")
+
+    with contextlib.suppress(Exception):
+        mavlink_client.stop()
+
+    print("[shutdown] resources cleaned up.")

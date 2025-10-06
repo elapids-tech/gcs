@@ -1,108 +1,74 @@
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  width: 100%;
+/* ルートを 100% 高さにしてスクロールの暴走を防止 */
+html, body, #root {
   height: 100%;
   margin: 0;
-  padding: 0;
 }
 
+/* アプリ全体 */
 .app {
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
+/* メインレイアウト全体を縦に分割 */
 .main-layout {
-  flex: 1;
-  margin: 5px;
-  padding: 0px;
-  border-radius: 8px;
-  background-color: #fff;
-  display: flex;
-  flex-direction: row;
-}
-
-.layout-split {
-  display: flex;
-  flex: 1;
-  background-color: #66c01c;
-}
-
-.left-panel {
-  background-color: #1cc0c0;
-}
-
-.right-panel {
-  background-color: #dbe728;
-}
-
-.bottons-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1em;
-  width: fit-content;
-}
-
-/* * {
-  margin: 0px;
-  padding: 0px;
-} */
-/* .App {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-
-.Split {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.Split > div {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: auto;
-} */
-/* .App {
-  height: 100vh;
+  flex: 1; /* 親(.app)の残り全てを使う */
   display: flex;
   flex-direction: column;
 }
 
+/* 上部タブバー */
+.top-bar {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  background: #ddd;
+  flex-shrink: 0; /* 高さ固定 */
+}
+
+/* ボタン下のメイン領域 */
+.main-content {
+  flex: 1; /* 上のバー以外を全て使う */
+  display: flex;
+  overflow: hidden;
+}
+
+/* Split コンテナは全高・横並び */
 .split {
+  flex: 1;
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+/* 各ペイン */
+.pane {
+  height: 100%;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
-.panel {
-  background-color: #f0f0f0;
-  border: 1px solid #ddd;
-  padding: 10px;
-  box-sizing: border-box;
-} */
-
-/* .split {
-  display: flex;
-  height: 100vh;
-}
-
-.left-pane,
-.right-pane {
+/* 右ペインだけ縦スクロール可 */
+.pane-right {
   overflow: auto;
-  padding: 10px;
 }
 
-.split .gutter {
-  background-color: #eee;
-  background-repeat: no-repeat;
-  background-position: 50%;
-  cursor: col-resize;
-} */
+/* Canvas を親サイズに完全フィット */
+.canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 右側のUI */
+.panel {
+  height: 100%;
+  box-sizing: border-box;
+  border-left: 1px solid #ddd;
+}
+
+.panel-inner {
+  padding: 8px;
+}
