@@ -47,7 +47,7 @@ class MavlinkClient:
         self,
         host: str,
         port: int = 14610,
-        local_port: int = 14611,
+        local_port: int = 14610,
         my_sysid: int = 250,
         my_compid: int = 190,
         target_sysid: int = 201,
@@ -84,15 +84,19 @@ class MavlinkClient:
             f"udpin:0.0.0.0:{self.local_port}"
         )
 
-        # サンプル用ダミー値（本番は実データ取得に置換）
-        self.drone_pos = [1.0, 1.0, 1.0]  # x, y, z
-        self.drone_pose = [0.2, 0.4, 0.6, 1.0]  # x, y, z, w (quaternion)
+        self.px4_raw_pos = [0.0, 0.0, 0.0]  # PX4 LOCAL_FRD
+        self.px4_raw_quat = [0.0, 0.0, 0.0, 1.0]  # PX4 quaternion
 
         # ハートビート送信スレッド起動
         self._heartbeat_interval = 1.0 / max(heartbeat_hz, 0.1)
         t1 = threading.Thread(target=self._send_heartbeat, daemon=True)
         t1.start()
         self._threads.append(t1)
+
+        # 受信メッセージ処理スレッド起動
+        t2 = threading.Thread(target=self._read_message_to_me, daemon=True)
+        t2.start()
+        self._threads.append(t2)
 
     def _send_heartbeat(self):
         """
@@ -113,6 +117,53 @@ class MavlinkClient:
                 pass
             time.sleep(self._heartbeat_interval)
 
+    def _read_message_to_me(self):
+        while self._running:
+            try:
+                msg = self.mav_in.recv_match(blocking=True, timeout=1.0)
+            except Exception:
+                continue
+
+            if msg is None:
+                continue
+
+            try:
+                src_sys = msg.get_srcSystem()
+                src_comp = msg.get_srcComponent()
+            except Exception:
+                continue
+
+            if src_sys != self.target_sysid or src_comp != self.target_compid:
+                continue
+
+            mtype = msg.get_type()
+
+            if mtype == "ODOMETRY":
+                try:
+                    x = float(getattr(msg, "x", 0.0))
+                    y = float(getattr(msg, "y", 0.0))
+                    z = float(getattr(msg, "z", 0.0))
+
+                    q = getattr(msg, "q", None)
+                    if q is None or len(q) < 4:
+                        continue
+
+                    w  = float(q[0])
+                    qx = float(q[1])
+                    qy = float(q[2])
+                    qz = float(q[3])
+
+                    # NaN / inf が含まれていたらこのメッセージは捨てる
+                    vals = (x, y, z, w, qx, qy, qz)
+                    if not all(math.isfinite(v) for v in vals):
+                        continue
+
+                    self.px4_raw_pos = [x, y, z]
+                    self.px4_raw_quat = [qx, qy, qz, w]
+
+                except Exception:
+                    continue
+   
     def stop(self):
         """
         スレッド停止・コネクション解放。
@@ -129,19 +180,105 @@ class MavlinkClient:
 
     def get_drone_position(self) -> list[float]:
         """
-        ドローンの位置（x, y, z）を取得（現状ダミー値）。
+        ドローンから受信した位置テレメトリーデータをz-up右手座標系に変換して返す。
         Returns:
             list[float]: [x, y, z]
         """
-        return self.drone_pos
-
+        fx, fy, fz = self.px4_raw_pos  # PX4 FRD (z-down)
+        ex = fx
+        ey = -fy
+        ez = -fz
+        return [ex, ey, ez]
+    
     def get_drone_quaternion(self) -> list[float]:
         """
-        ドローンの姿勢（クォータニオン: x, y, z, w）を取得（現状ダミー値）。
+        ドローンから受信したクォータニオンテレメトリーデータをz-up右手座標系に変更してリターンする。
         Returns:
             list[float]: [x, y, z, w]
         """
-        return self.drone_pose
+        qx, qy, qz, qw = self.px4_raw_quat  # PX4生データ [x, y, z, w] (z-down)
+
+        # PX4生クォータニオン -> (w, x, y, z)
+        w = qw
+        x = qx
+        y = qy
+        z = qz
+
+        # 正規化
+        n = (w * w + x * x + y * y + z * z) ** 0.5
+        if n == 0.0:
+            return [0.0, 0.0, 0.0, 1.0]
+        w /= n
+        x /= n
+        y /= n
+        z /= n
+
+        # クォータニオン -> 回転行列 (body -> world, z-down)
+        R00 = 1.0 - 2.0 * (y * y + z * z)
+        R01 = 2.0 * (x * y - z * w)
+        R02 = 2.0 * (x * z + y * w)
+
+        R10 = 2.0 * (x * y + z * w)
+        R11 = 1.0 - 2.0 * (x * x + z * z)
+        R12 = 2.0 * (y * z - x * w)
+
+        R20 = 2.0 * (x * z - y * w)
+        R21 = 2.0 * (y * z + x * w)
+        R22 = 1.0 - 2.0 * (x * x + y * y)
+
+        # 世界座標 z-down -> z-up への変換
+        # 位置の変換 ex = fx, ey = -fy, ez = -fz に対応させるため、
+        # 姿勢は R_zup = T * R_zdown, T = diag(1, -1, -1)
+        R00p = R00
+        R01p = R01
+        R02p = R02
+
+        R10p = -R10
+        R11p = -R11
+        R12p = -R12
+
+        R20p = -R20
+        R21p = -R21
+        R22p = -R22
+
+        # 回転行列 -> クォータニオン (w, x, y, z)
+        tr = R00p + R11p + R22p
+        if tr > 0.0:
+            S = (tr + 1.0) ** 0.5 * 2.0
+            qw2 = 0.25 * S
+            qx2 = (R21p - R12p) / S
+            qy2 = (R02p - R20p) / S
+            qz2 = (R10p - R01p) / S
+        elif (R00p > R11p) and (R00p > R22p):
+            S = (1.0 + R00p - R11p - R22p) ** 0.5 * 2.0
+            qw2 = (R21p - R12p) / S
+            qx2 = 0.25 * S
+            qy2 = (R01p + R10p) / S
+            qz2 = (R02p + R20p) / S
+        elif R11p > R22p:
+            S = (1.0 - R00p + R11p - R22p) ** 0.5 * 2.0
+            qw2 = (R02p - R20p) / S
+            qx2 = (R01p + R10p) / S
+            qy2 = 0.25 * S
+            qz2 = (R12p + R21p) / S
+        else:
+            S = (1.0 - R00p - R11p + R22p) ** 0.5 * 2.0
+            qw2 = (R10p - R01p) / S
+            qx2 = (R02p + R20p) / S
+            qy2 = (R12p + R21p) / S
+            qz2 = 0.25 * S
+
+        n2 = (qw2 * qw2 + qx2 * qx2 + qy2 * qy2 + qz2 * qz2) ** 0.5
+        if n2 == 0.0:
+            return [0.0, 0.0, 0.0, 1.0]
+
+        qw2 /= n2
+        qx2 /= n2
+        qy2 /= n2
+        qz2 /= n2
+
+        # 戻り値は z-up 右手系の [x, y, z, w]
+        return [qx2, qy2, qz2, qw2]
 
     def set_config_mode_signal(self):
         """
