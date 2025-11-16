@@ -91,7 +91,7 @@ app.add_middleware(
 )
 
 manager = ConnectionManager()
-mavlink_client = MavlinkClient(host="192.168.0.4")
+mavlink_client = MavlinkClient(host="192.168.0.5")
 drone_settings = DroneSettings()
 
 # 受信した最新フレーム（JPEGバイト列と受信時刻）
@@ -266,7 +266,7 @@ async def stop_recording():
     return {"status": "ok"}
 
 async def periodic_task():
-    """30Hzでテレメトリをブロードキャスト"""
+    """30Hzでテレメトリデータをフロントエンドにブロードキャストする"""
     try:
         while True:
             position = mavlink_client.get_drone_position()
