@@ -50,7 +50,7 @@ class MavlinkClient:
         local_port: int = 14610,
         my_sysid: int = 250,
         my_compid: int = 190,
-        target_sysid: int = 201,
+        target_sysid: int = 1,
         target_compid: int = 191,
         heartbeat_hz: float = 1.0,
     ):
