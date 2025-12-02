@@ -1,0 +1,114 @@
+<svg width="300" height="800" viewBox="0 0 300 800" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Background -->
+  <rect x="0" y="0" width="300" height="800" fill="#ffffff" />
+
+  <!-- Common styles -->
+  <style>
+    .folder-box { fill: #f6d365; stroke: #d6a74b; stroke-width: 1; }
+    .file-box   { fill: #ffffff; stroke: #888888; stroke-width: 1; }
+    .label      { font-family: Arial, sans-serif; font-size: 11px; fill: #333333; }
+    .line       { stroke: #555555; stroke-width: 1; }
+  </style>
+
+  <!-- Root folder -->
+  <!-- Icon -->
+  <rect x="30" y="30" width="26" height="18" class="folder-box" />
+  <rect x="30" y="26" width="14" height="6" class="folder-box" />
+  <!-- Label -->
+  <text x="65" y="43" class="label">project_root</text>
+
+  <!-- Vertical line from root to children -->
+  <line x1="43" y1="48" x2="43" y2="330" class="line" />
+
+  <!-- ================== Folder: src ================== -->
+  <!-- Connector from main trunk to src -->
+  <line x1="43" y1="90" x2="80" y2="90" class="line" />
+  <!-- Folder icon -->
+  <rect x="80" y="80" width="24" height="16" class="folder-box" />
+  <rect x="80" y="76" width="12" height="5" class="folder-box" />
+  <!-- Label -->
+  <text x="112" y="92" class="label">src</text>
+
+  <!-- Children of src (files) -->
+  <!-- Vertical line under src -->
+  <line x1="92" y1="96" x2="92" y2="180" class="line" />
+
+  <!-- file: main.cpp -->
+  <line x1="92" y1="120" x2="120" y2="120" class="line" />
+  <rect x="120" y="110" width="20" height="16" class="file-box" />
+  <text x="146" y="122" class="label">main.cpp</text>
+
+  <!-- file: utils.cpp -->
+  <line x1="92" y1="150" x2="120" y2="150" class="line" />
+  <rect x="120" y="140" width="20" height="16" class="file-box" />
+  <text x="146" y="152" class="label">utils.cpp</text>
+
+  <!-- file: utils.h -->
+  <line x1="92" y1="180" x2="120" y2="180" class="line" />
+  <rect x="120" y="170" width="20" height="16" class="file-box" />
+  <text x="146" y="182" class="label">utils.h</text>
+
+  <!-- ================== Folder: include ================== -->
+  <!-- Connector from main trunk to include -->
+  <line x1="43" y1="180" x2="80" y2="180" class="line" />
+  <!-- Folder icon -->
+  <rect x="80" y="170" width="24" height="16" class="folder-box" />
+  <rect x="80" y="166" width="12" height="5" class="folder-box" />
+  <!-- Label -->
+  <text x="112" y="182" class="label">include</text>
+
+  <!-- Children of include (files) -->
+  <line x1="92" y1="186" x2="92" y2="250" class="line" />
+
+  <!-- file: project.h -->
+  <line x1="92" y1="210" x2="120" y2="210" class="line" />
+  <rect x="120" y="200" width="20" height="16" class="file-box" />
+  <text x="146" y="212" class="label">project.h</text>
+
+  <!-- file: config.h -->
+  <line x1="92" y1="240" x2="120" y2="240" class="line" />
+  <rect x="120" y="230" width="20" height="16" class="file-box" />
+  <text x="146" y="242" class="label">config.h</text>
+
+  <!-- ================== Folder: docs ================== -->
+  <!-- Connector from main trunk to docs -->
+  <line x1="43" y1="270" x2="80" y2="270" class="line" />
+  <!-- Folder icon -->
+  <rect x="80" y="260" width="24" height="16" class="folder-box" />
+  <rect x="80" y="256" width="12" height="5" class="folder-box" />
+  <!-- Label -->
+  <text x="112" y="272" class="label">docs</text>
+
+  <!-- Children of docs -->
+  <line x1="92" y1="276" x2="92" y2="340" class="line" />
+
+  <!-- file: README.md -->
+  <line x1="92" y1="300" x2="120" y2="300" class="line" />
+  <rect x="120" y="290" width="20" height="16" class="file-box" />
+  <text x="146" y="302" class="label">README.md</text>
+
+  <!-- file: design.md -->
+  <line x1="92" y1="330" x2="120" y2="330" class="line" />
+  <rect x="120" y="320" width="20" height="16" class="file-box" />
+  <text x="146" y="332" class="label">design.md</text>
+
+  <!-- ================== Folder: build (bottom example) ================== -->
+  <!-- Connector from main trunk to build -->
+  <line x1="43" y1="330" x2="80" y2="330" class="line" />
+  <rect x="80" y="320" width="24" height="16" class="folder-box" />
+  <rect x="80" y="316" width="12" height="5" class="folder-box" />
+  <text x="112" y="332" class="label">build</text>
+
+  <!-- build children -->
+  <line x1="92" y1="336" x2="92" y2="390" class="line" />
+
+  <line x1="92" y1="360" x2="120" y2="360" class="line" />
+  <rect x="120" y="350" width="20" height="16" class="file-box" />
+  <text x="146" y="362" class="label">app.exe</text>
+
+  <line x1="92" y1="390" x2="120" y2="390" class="line" />
+  <rect x="120" y="380" width="20" height="16" class="file-box" />
+  <text x="146" y="392" class="label">log.txt</text>
+
+</svg>
