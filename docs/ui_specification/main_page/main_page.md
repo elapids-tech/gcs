@@ -5,13 +5,17 @@
 ## Components
 
 ### STATE Indicator
-ドローンがどのモードに入っているのかを表示します。
+- ドローンがどのモードに入っているのかを表示します。
+- WebSocket TCP を使用し GCS Server からドローンの状態を受け取ります。
 
 ### TAKEOFF Button
-ドローンに離陸の指示するためのボタンです。
+- ドローンに離陸の指示するためのボタンです。
+- ボタンが押下されると、WebSocket TCP を使用し GCS Server へ離陸コマンド送信します。
 
 ### LANDING Button
-ドローンに着陸の指示するためのボタンです。
+- ドローンに着陸の指示するためのボタンです。
+- ボタンが押下されると、WebSocket TCP を使用し GCS Server へ着陸コマンド送信します。
 
 ### EMERGENCY STOP Button
-モーターの回転を完全に停止させるためのボタンです。
+- モーターの回転を完全に停止させるためのボタンです。
+- ボタンが押下されると、WebSocket TCP を使用し GCS Server へモーター停止コマンド送信します。
