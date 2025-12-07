@@ -4,7 +4,11 @@
 
 ## Components
 
-### STATE Indicator
+### SERVER STATE Display
+- サーバーの状態、接続状態などを表示します。
+- WebSocket TCP を使用し状態を受け取ります。
+
+### DRONE STATE Display
 - ドローンがどのモードに入っているのかを表示します。
 - WebSocket TCP を使用し GCS Server からドローンの状態を受け取ります。
 
