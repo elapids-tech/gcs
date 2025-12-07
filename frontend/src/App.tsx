@@ -41,6 +41,38 @@ const colorMap: { [key: string]: string } = {
 };
 const getColorForId = (id: number | string): string => colorMap[id.toString()] || 'gray';
 
+
+export function useControlSocket() {
+  const socketRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    const socket = new WebSocket("ws://localhost:8003/ws/drone/control");
+    socketRef.current = socket;
+
+    socket.onopen = () => {
+      console.log("WebSocket connected");
+    };
+
+    socket.onclose = () => {
+      console.log("WebSocket disconnected");
+    };
+
+    socket.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
+
+    return () => socket.close();
+  }, []);
+
+  // サーバーに操作コマンドを送信する関数
+  const sendCommand = (action: string, params?: any) => {
+    socketRef.current?.send(JSON.stringify({ action, params }));
+  };
+
+  return { sendCommand };
+}
+
+
 const Viewer3d: React.FC = () => {
   const gridConfig = {
     cellSize: 1,
@@ -148,80 +180,58 @@ const Viewer3d: React.FC = () => {
   );
 };
 
-const DroneControlPanel: React.FC = () => {
-  // Setpoint用 state
-  const [x, setX] = useState('');
-  const [y, setY] = useState('');
-  const [z, setZ] = useState('');
-  const [yaw, setYaw] = useState('');
 
-  const post = (path: string, body?: any) =>
-    fetch(`http://localhost:8003/${path}`, {
-      method: 'POST',
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    }).then((r) => r.json());
-
-  const handleClickArm = () => post('arm').then(console.log).catch(console.error);
-  const handleClickDisarm = () => post('disarm').then(console.log).catch(console.error);
-  const handleClickGuideMode = () => post('guide').then(console.log).catch(console.error);
-  const handleClickAutoMode = () => post('auto').then(console.log).catch(console.error);
-  const handleClickStart = () => post('start').then(console.log).catch(console.error);
-  const handleClickStop = () => post('stop').then(console.log).catch(console.error);
-
-  const handleClickSetpoint = () => {
-    const payload = {
-      x: parseFloat(x),
-      y: parseFloat(y),
-      z: parseFloat(z),
-      yaw_deg: parseFloat(yaw),
-    };
-    post('set-setpoint', payload).then(console.log).catch(console.error);
+export const DroneControlPanel: React.FC = () => {
+  const panelStyle: React.CSSProperties = {
+    height: "100%",
+    boxSizing: "border-box",
+    borderLeft: "1px solid #ddd",
   };
 
+  const panelInnerStyle: React.CSSProperties = {
+    padding: 8,
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+  };
+
+  const buttonsColumnStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  };
+
+  const emergencyButtonStyle: React.CSSProperties = {
+    marginTop: 16, 
+  };
+
+
+  const { sendCommand } = useControlSocket();
+
+  const handleClickTakeoff = () => sendCommand("takeoff");
+  const handleClickLanding = () => sendCommand("landing");
+  const handleClickEmergencyStop = () => sendCommand("emergency_stop");
+
   return (
-    <div className="panel">
-      <div className="panel-inner">
-        <div className="bottons-column">
-          <h2>Telemetry</h2>
-
-          <h2>Control</h2>
-          <button onClick={handleClickArm}>Arm</button>
-          <button onClick={handleClickDisarm}>Disarm</button>
-          <button onClick={handleClickGuideMode}>Guide Mode</button>
-          <button onClick={handleClickAutoMode}>Auto Mode</button>
-
-          <h2>Setpoint</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '200px' }}>
-            <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
-              X:
-              <input type="number" value={x} onChange={(e) => setX(e.target.value)} style={{ width: '100px', margin: 0 }} />
-            </label>
-            <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
-              Y:
-              <input type="number" value={y} onChange={(e) => setY(e.target.value)} style={{ width: '100px', margin: 0 }} />
-            </label>
-            <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
-              Z:
-              <input type="number" value={z} onChange={(e) => setZ(e.target.value)} style={{ width: '100px', margin: 0 }} />
-            </label>
-            <label style={{ display: 'flex', justifyContent: 'space-between', margin: 0 }}>
-              Yaw:
-              <input type="number" value={yaw} onChange={(e) => setYaw(e.target.value)} style={{ width: '100px', margin: 0 }} />
-            </label>
-            <button onClick={handleClickSetpoint} style={{ padding: '4px 8px', margin: '4px 0 0 0' }}>
-              Set
-            </button>
-          </div>
-
-          <h2>No function</h2>
-          <button onClick={handleClickStart}>Start</button>
-          <button onClick={handleClickStop}>Stop</button>
+    <div style={panelStyle}>
+      <div style={panelInnerStyle}>
+        <div style={buttonsColumnStyle}>
+          <h2>Server State</h2>
+          <h2>Drone State</h2>
+          <button onClick={handleClickTakeoff}>TAKEOFF</button>
+          <button onClick={handleClickLanding}>LANDING</button>
+          <button
+            style={emergencyButtonStyle}
+            onClick={handleClickEmergencyStop}
+          >
+            EMERGENCY STOP
+          </button>
         </div>
       </div>
     </div>
   );
 };
+
 
 function MainLayout() {
   const [activeTab, setActiveTab] = useState<'preview' | 'config'>('preview');

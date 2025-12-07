@@ -61,14 +61,3 @@ html, body, #root {
   height: 100%;
   display: block;
 }
-
-/* 右側のUI */
-.panel {
-  height: 100%;
-  box-sizing: border-box;
-  border-left: 1px solid #ddd;
-}
-
-.panel-inner {
-  padding: 8px;
-}

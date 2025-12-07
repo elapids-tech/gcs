@@ -292,40 +292,42 @@ async def periodic_task():
         traceback.print_exc()
 
 
-@app.post("/start")
-def start():
-    print("[/start] start endpoint called")
-    return {"status": "ok", "message": "start called"}
+@app.websocket("/ws/drone/control")
+async def drone_control_socket(websocket: WebSocket):
+    await websocket.accept()
+    print("Drone control WebSocket connected")
 
+    try:
+        while True:
+            # ここでメッセージ受信完了まで await するため、ビジーループにはなりません
+            message_text = await websocket.receive_text()
+            data = json.loads(message_text)
 
-@app.post("/stop")
-def stop():
-    print("[/stop] stop endpoint called")
-    return {"status": "ok", "message": "stop called"}
+            action = data.get("action")
+            params = data.get("params", {})
+            
+            if action == "takeoff":
+                print("takeoff command received")
+                # 高度などが params に入っている想定
+                altitude = params.get("altitude", 2.0)
+                print("target altitude:", altitude)
+                # send_mavlink_takeoff(altitude)
 
+            elif action == "landing":
+                print("landing command received")
+                # send_mavlink_land()
 
-@app.post("/arm")
-def arm():
-    print("[/arm] arm pressed")
-    return {"status": "ok", "message": "arm command sent"}
+            elif action == "emergency_stop":
+                print("emergency stop command received")
 
+            else:
+                print("unknown action:", action)
 
-@app.post("/disarm")
-def disarm():
-    print("[/disarm] disarm pressed")
-    return {"status": "ok", "message": "disarm command sent"}
-
-
-@app.post("/guide")
-def set_guide_mode():
-    print("[/guide] guide pressed")
-    return {"status": "ok", "message": "GUIDED mode set"}
-
-
-@app.post("/auto")
-def set_auto_mode():
-    print("[/auto] auto pressed")
-    return {"status": "ok", "message": "AUTO mode set"}
+    except WebSocketDisconnect:
+        print("Drone control WebSocket disconnected")
+        # ここでフェイルセーフ処理を行う想定
+        # send_mavlink_velocity(0.0, 0.0, 0.0)
+        # send_mavlink_hold_or_rtl()
 
 
 @app.post("/set-setpoint")
