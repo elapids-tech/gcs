@@ -31,7 +31,7 @@ const DroneConfigurationPage: React.FC = () => {
 
   return (
     <div style={{ padding: "16px" }}>
-      <h2>DroneConfigurationPage</h2>
+      <h2>Drone Configuration</h2>
       <div style={{ display: "flex", gap: "24px" }}>
         <div style={{ flex: 1 }}>
           <CameraFrameViewer />

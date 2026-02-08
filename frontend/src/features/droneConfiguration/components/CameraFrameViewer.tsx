@@ -36,7 +36,7 @@ const CameraFrameViewer: React.FC = () => {
 
   return (
     <div>
-      <h3>ドローン映像</h3>
+      <h3>Drone Camera Stream</h3>
       {imageUrl && (
         <img
           src={imageUrl}
