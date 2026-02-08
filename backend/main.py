@@ -91,7 +91,7 @@ app.add_middleware(
 )
 
 manager = ConnectionManager()
-mavlink_client = MavlinkClient(host="192.168.0.5")
+mavlink_client = MavlinkClient(host="192.168.0.6")
 drone_settings = DroneSettings()
 
 # 受信した最新フレーム（JPEGバイト列と受信時刻）
