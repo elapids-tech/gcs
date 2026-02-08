@@ -322,23 +322,18 @@ class MavlinkClient:
             return False
         except Exception:
             return False
-
-    def send_recording_param(self, is_recording: bool):
+    
+    def set_video_streaming_mode_signal(self):
         """
-        録画パラメータコマンドを送信。
+        ビデオストリーミングモード切替コマンドを送信。
+        呼び出し側で2Hz程度で定期的に呼び出すことを想定。
         """
-        send_recording_param = 0
-        if is_recording == True:
-            send_recording_param = 1
-        else:
-            send_recording_param = 0
-
         self.mav_out.mav.command_long_send(
             self.target_sysid,
             self.target_compid,
-            31002,  # MAV_CMD_MY_APP_RECORDING_PARAM
+            31002,  # MAV_CMD_MY_APP_VIDEO_STREAMING_MODE
             0,
-            send_recording_param, 0, 0, 0, 0, 0, 0,
+            1, 0, 0, 0, 0, 0, 0,
         )
     
     def __del__(self):

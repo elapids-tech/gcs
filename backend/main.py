@@ -231,11 +231,17 @@ async def video_stream(websocket: WebSocket):
 
 @app.post("/config-mode/set-bin-threshold")
 async def set_bin_threshold(threshold: int):
-    """2値化の閾値を設定"""
-    if not (0 <= threshold <= 255):
+    """
+    2値化の閾値を設定
+    Args:
+        threshold (int): 2値化の閾値 (-1: 二値化処理無効, 0-255: 閾値)
+    Returns:
+        JSONResponse: result 
+    """
+    if not (-1 <= threshold <= 255):
         return JSONResponse(
             status_code=400,
-            content={"status": "error", "message": "Threshold must be between 0 and 255."},
+            content={"status": "error", "message": "Threshold must be between -1 and 255."},
         )
     mavlink_client.send_bin_threshold(threshold)
     drone_settings.set_bin_threshold(threshold)
@@ -254,16 +260,6 @@ def send_enable_config_mode_signal():
     mavlink_client.set_config_mode_signal()
     return {"status": "ok"}
 
-
-@app.post("/config-mode/start-recording")
-async def start_recording():
-    mavlink_client.send_recording_param(True)
-    return {"status": "ok"}
-
-@app.post("/config-mode/stop-recording")
-async def stop_recording():
-    mavlink_client.send_recording_param(False)
-    return {"status": "ok"}
 
 async def periodic_task():
     """30Hzでテレメトリデータをフロントエンドにブロードキャストする"""

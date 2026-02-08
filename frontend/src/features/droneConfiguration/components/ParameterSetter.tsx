@@ -46,10 +46,10 @@ const ParameterSetter: React.FC = () => {
     <div>
       <h3>パラメータ設定</h3>
       <label>
-        2値化しきい値: {threshold}
+        2値化しきい値: {threshold === -1 ? "無効" : threshold}
         <input
           type="range"
-          min="0"
+          min="-1"
           max="255"
           step="1"
           value={threshold}
@@ -57,11 +57,6 @@ const ParameterSetter: React.FC = () => {
           style={{ width: "100%" }}
         />
       </label>
-      <div style={{ marginTop: "16px" }}>
-        <button onClick={toggleRecording} style={{ padding: "8px 16px" }}>
-          {isRecording ? "録画停止" : "録画開始"}
-        </button>
-      </div>
     </div>
   );
 };
