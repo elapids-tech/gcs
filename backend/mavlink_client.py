@@ -369,3 +369,7 @@ class MavlinkClient:
                     return False
 
                 self._param_cv.wait(timeout=remain)
+
+    def get_bin_threshold_parameter(self, timeout_sec: float = 2.0) -> Optional[int]:
+        param_id = "BIN_TH"
+        pass

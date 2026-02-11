@@ -14,7 +14,6 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect, WebSocketState
 
-from backend.drone_settings import DroneSettings
 from backend.mavlink_client import MavlinkClient
 
 try:
@@ -92,7 +91,6 @@ app.add_middleware(
 
 manager = ConnectionManager()
 mavlink_client = MavlinkClient(host="192.168.0.6")
-drone_settings = DroneSettings()
 
 # 受信した最新フレーム（JPEGバイト列と受信時刻）
 latest_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
@@ -243,15 +241,15 @@ async def set_bin_threshold(threshold: int):
             status_code=400,
             content={"status": "error", "message": "Threshold must be between -1 and 255."},
         )
-    mavlink_client.send_bin_threshold(threshold)
-    drone_settings.set_bin_threshold(threshold)
+    
+    mavlink_client.send_bin_threshold_parameter(threshold)
     return {"status": "ok", "message": f"Binary threshold set to {threshold}."}
 
 
-@app.get("/config-mode/get-bin-threshold")
+@app.get("/config-mode/read-bin-threshold-on-drone")
 async def get_bin_threshold():
-    """2値化の閾値を取得"""
-    threshold = drone_settings.bin_threshold
+    """ドローンに設定されている2値化閾値を取得する"""
+    threshold = mavlink_client.get_bin_threshold_parameter()
     return {"status": "ok", "bin_threshold": threshold}
 
 
