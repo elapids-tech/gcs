@@ -16,7 +16,43 @@ type CameraControlsState = Record<CameraControlKey, number> & {
   auto_exposure: number; // fixed manual
 };
 
+type CameraControlSpec = {
+  apiName: string; // not use underscore
+  label: string;   // display label
+  min: number;
+  max: number;
+  step: number;
+  def: number;
+};
+
+const API_BASE_URL = "http://localhost:8003";
 const DEBOUNCE_MS = 250;
+
+const CAMERA_SPECS: Record<CameraControlKey, CameraControlSpec> = {
+  brightness: { apiName: "brightness", label: "brightness", min: -64, max: 64, step: 1, def: 0 },
+  contrast: { apiName: "contrast", label: "contrast", min: 0, max: 95, step: 1, def: 34 },
+  saturation: { apiName: "saturation", label: "saturation", min: 0, max: 100, step: 1, def: 32 },
+  hue: { apiName: "hue", label: "hue", min: -2000, max: 2000, step: 1, def: 0 },
+  gamma: { apiName: "gamma", label: "gamma", min: 100, max: 300, step: 1, def: 150 },
+  gain: { apiName: "gain", label: "gain", min: 0, max: 255, step: 1, def: 32 },
+  exposure_time_absolute: {
+    apiName: "exposure-time-absolute",
+    label: "exposure_time_absolute",
+    min: 1,
+    max: 10000,
+    step: 1,
+    def: 20,
+  },
+  white_balance_temperature: {
+    apiName: "white-balance-temperature",
+    label: "white_balance_temperature",
+    min: 2800,
+    max: 6500,
+    step: 1,
+    def: 4600,
+  },
+  sharpness: { apiName: "sharpness", label: "sharpness", min: 1, max: 100, step: 1, def: 28 },
+};
 
 const ParameterSetter: React.FC = () => {
   const [threshold, setThreshold] = useState<number>(128);
@@ -44,7 +80,7 @@ const ParameterSetter: React.FC = () => {
   const pendingRef = useRef<Record<string, number | undefined>>({});
 
   useEffect(() => {
-    fetch("http://localhost:8003/config-mode/get-bin-threshold")
+    fetch(`${API_BASE_URL}/config-mode/get-bin-threshold`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch threshold");
         return res.json();
@@ -58,14 +94,15 @@ const ParameterSetter: React.FC = () => {
   }, []);
 
   const postBinThreshold = async (value: number) => {
-    await fetch(`http://localhost:8003/config-mode/set-bin-threshold?threshold=${value}`, {
+    await fetch(`${API_BASE_URL}/config-mode/set-bin-threshold?threshold=${value}`, {
       method: "POST",
     });
   };
 
-  const postCameraControl = async (key: string, value: number) => {
+  const postCameraControl = async (key: CameraControlKey, value: number) => {
+    const apiName = CAMERA_SPECS[key].apiName;
     await fetch(
-      `http://localhost:8003/config-mode/set-camera-control?name=${encodeURIComponent(key)}&value=${value}`,
+      `${API_BASE_URL}/config-mode/set-camera-control?name=${encodeURIComponent(apiName)}&value=${value}`,
       { method: "POST" }
     );
   };
@@ -119,7 +156,7 @@ const ParameterSetter: React.FC = () => {
 
   const handleThresholdRangeCommit = (e: React.SyntheticEvent<HTMLInputElement>) => {
     const value = Number((e.currentTarget as HTMLInputElement).value);
-    scheduleSend("bin_threshold", value, postBinThreshold);
+    scheduleSend("bin-threshold", value, postBinThreshold);
   };
 
   // ---- Camera controls ----
@@ -135,38 +172,32 @@ const ParameterSetter: React.FC = () => {
   const handleCameraRangeCommit =
     (key: CameraControlKey) => (e: React.SyntheticEvent<HTMLInputElement>) => {
       const value = Number((e.currentTarget as HTMLInputElement).value);
-      scheduleSend(`camera:${key}`, value, (v) => postCameraControl(String(key), v));
+      scheduleSend(`camera:${key}`, value, (v) => postCameraControl(key, v));
     };
 
   const handleCameraNumberChange =
     (key: CameraControlKey) => (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = Number(e.target.value);
       setCameraValue(key, value);
-      postCameraControl(String(key), value).catch((err) => console.warn("camera control送信失敗:", err));
+      postCameraControl(key, value).catch((err) => console.warn("camera control送信失敗:", err));
     };
 
-  const renderSlider = (
-    key: CameraControlKey,
-    label: string,
-    min: number,
-    max: number,
-    step: number,
-    def: number
-  ) => {
+  const renderSlider = (key: CameraControlKey) => {
+    const spec = CAMERA_SPECS[key];
     const value = camera[key];
 
     return (
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontFamily: "monospace", marginBottom: 6 }}>
-          {label}: {value} (min={min} max={max} step={step} default={def})
+          {spec.label}: {value} (min={spec.min} max={spec.max} step={spec.step} default={spec.def})
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
           <input
             type="number"
-            min={min}
-            max={max}
-            step={step}
+            min={spec.min}
+            max={spec.max}
+            step={spec.step}
             value={value}
             onChange={handleCameraNumberChange(key)}
             style={{ width: 140 }}
@@ -174,8 +205,8 @@ const ParameterSetter: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              setCameraValue(key, def);
-              postCameraControl(String(key), def).catch((err) => console.warn("camera control送信失敗:", err));
+              setCameraValue(key, spec.def);
+              postCameraControl(key, spec.def).catch((err) => console.warn("camera control送信失敗:", err));
             }}
           >
             Default
@@ -184,9 +215,9 @@ const ParameterSetter: React.FC = () => {
 
         <input
           type="range"
-          min={min}
-          max={max}
-          step={step}
+          min={spec.min}
+          max={spec.max}
+          step={spec.step}
           value={value}
           onChange={handleCameraRangeChange(key)}
           onMouseUp={handleCameraRangeCommit(key)}
@@ -213,9 +244,7 @@ const ParameterSetter: React.FC = () => {
           <div style={{ fontFamily: "monospace", marginBottom: 6 }}>
             binary_threshold: {threshold === -1 ? "disabled" : threshold} (min=-1 max=255 step=1)
           </div>
-          <div style={{ fontFamily: "monospace", marginBottom: 8 }}>
-            -1 = disables binary thresholding.
-          </div>
+          <div style={{ fontFamily: "monospace", marginBottom: 8 }}>-1 = disables binary thresholding.</div>
           <input
             type="range"
             min="-1"
@@ -239,15 +268,15 @@ const ParameterSetter: React.FC = () => {
 
       {cameraSettingsOpen && (
         <div style={{ border: "1px solid #ccc", padding: 12, borderRadius: 8, marginTop: 8 }}>
-          {renderSlider("brightness", "brightness", -64, 64, 1, 0)}
-          {renderSlider("contrast", "contrast", 0, 95, 1, 34)}
-          {renderSlider("saturation", "saturation", 0, 100, 1, 32)}
-          {renderSlider("hue", "hue", -2000, 2000, 1, 0)}
-          {renderSlider("gamma", "gamma", 100, 300, 1, 150)}
-          {renderSlider("gain", "gain", 0, 255, 1, 32)}
-          {renderSlider("exposure_time_absolute", "exposure_time_absolute", 1, 10000, 1, 20)}
-          {renderSlider("white_balance_temperature", "white_balance_temperature", 2800, 6500, 1, 4600)}
-          {renderSlider("sharpness", "sharpness", 1, 100, 1, 28)}
+          {renderSlider("brightness")}
+          {renderSlider("contrast")}
+          {renderSlider("saturation")}
+          {renderSlider("hue")}
+          {renderSlider("gamma")}
+          {renderSlider("gain")}
+          {renderSlider("exposure_time_absolute")}
+          {renderSlider("white_balance_temperature")}
+          {renderSlider("sharpness")}
         </div>
       )}
     </div>

@@ -48,6 +48,17 @@ class MavlinkClient:
     MAV_CMD_MY_APP_SET_CONFIG_MODE = 31000
     MAV_CMD_MY_APP_VIDEO_STREAMING_MODE = 31001
 
+    PARAM_BIN_THRESHOLD = "BIN_TH"
+    PARAM_BRIGHTNESS = "BRIGHT"
+    PARAM_CONTRAST = "CONTR"
+    PARAM_SATURATION = "SAT"
+    PARAM_HUE = "HUE"
+    PARAM_GAMMA = "GAMMA"
+    PARAM_GAIN = "GAIN"
+    PARAM_WB_TEMP = "WB_TEMP"
+    PARAM_SHARPNESS = "SHARP"
+    PARAM_EXPOSURE_ABS = "EXP_ABS"
+
     def __init__(
         self,
         host_ip: str,
@@ -339,36 +350,80 @@ class MavlinkClient:
         except Exception:
             pass
 
-    def send_bin_threshold_parameter(self, threshold: int, timeout_sec: float = 2.0) -> bool:
-        param_id = "BIN_TH"
-        threshold = max(-1, min(255, int(threshold)))
-    
+    def _send_int32_param(
+        self,
+        param_id: str,
+        value: int,
+        timeout_sec: float = 2.0,
+    ) -> bool:
+        """
+        INT32パラメータを送信し、反映(=param_valueが一致)するまで待つ共通関数
+        Args:
+            param_id (str): MAVLink parameter id
+            value (int): 設定値
+            timeout_sec (float): タイムアウト秒
+        Returns:
+            bool: 成功ならTrue
+        """
+        param_id = str(param_id)
+        value_i = int(value)
+
         try:
             self._mav.param_set_send(
                 self.target_sysid,
                 self.target_compid,
                 param_id.encode("ascii"),
-                float(threshold),
+                float(value_i),
                 mavutil.mavlink.MAV_PARAM_TYPE_INT32,
             )
         except Exception:
             return False
-    
+
         deadline = time.time() + max(0.0, float(timeout_sec))
-    
+
         with self._param_cv:
             while True:
                 cur = self._params.get(param_id)
                 if cur is not None:
                     cur_i = int(round(float(cur)))
-                    if cur_i == threshold:
+                    if cur_i == value_i:
                         return True
-    
+
                 remain = deadline - time.time()
                 if remain <= 0.0:
                     return False
-    
+
                 self._param_cv.wait(timeout=remain)
+
+    def send_bin_threshold_parameter(self, threshold: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_BIN_THRESHOLD, threshold, timeout_sec)
+
+    def send_brightness_parameter(self, brightness: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_BRIGHTNESS, brightness, timeout_sec)
+
+    def send_contrast_parameter(self, contrast: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_CONTRAST, contrast, timeout_sec)
+
+    def send_saturation_parameter(self, saturation: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_SATURATION, saturation, timeout_sec)
+
+    def send_hue_parameter(self, hue: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_HUE, hue, timeout_sec)
+
+    def send_gamma_parameter(self, gamma: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_GAMMA, gamma, timeout_sec)
+
+    def send_gain_parameter(self, gain: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_GAIN, gain, timeout_sec)
+
+    def send_white_balance_temperature_parameter(self, wb_temp: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_WB_TEMP, wb_temp, timeout_sec)
+
+    def send_sharpness_parameter(self, sharpness: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_SHARPNESS, sharpness, timeout_sec)
+
+    def send_exposure_time_absolute_parameter(self, exposure_abs: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_EXPOSURE_ABS, exposure_abs, timeout_sec)
     
     def get_bin_threshold_parameter(self, timeout_sec: float = 2.0) -> Optional[int]:
         param_id = "BIN_TH"

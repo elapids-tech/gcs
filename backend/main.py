@@ -246,6 +246,74 @@ async def set_bin_threshold(threshold: int):
     return {"status": "ok", "message": f"Binary threshold set to {threshold}."}
 
 
+_CAMERA_CONTROL_RANGES = {
+    "brightness": (-64, 64),
+    "contrast": (0, 95),
+    "saturation": (0, 100),
+    "hue": (-2000, 2000),
+    "gamma": (100, 300),
+    "gain": (0, 255),
+    "exposure-time-absolute": (1, 10000),
+    "white-balance-temperature": (2800, 6500),
+    "sharpness": (1, 100),
+}
+
+def _send_camera_control(name: str, value: int) -> bool:
+    if name == "brightness":
+        return bool(mavlink_client.send_brightness_parameter(value))
+    if name == "contrast":
+        return bool(mavlink_client.send_contrast_parameter(value))
+    if name == "saturation":
+        return bool(mavlink_client.send_saturation_parameter(value))
+    if name == "hue":
+        return bool(mavlink_client.send_hue_parameter(value))
+    if name == "gamma":
+        return bool(mavlink_client.send_gamma_parameter(value))
+    if name == "gain":
+        return bool(mavlink_client.send_gain_parameter(value))
+    if name == "exposure-time-absolute":
+        return bool(mavlink_client.send_exposure_time_absolute_parameter(value))
+    if name == "white-balance-temperature":
+        return bool(mavlink_client.send_white_balance_temperature_parameter(value))
+    if name == "sharpness":
+        return bool(mavlink_client.send_sharpness_parameter(value))
+    return False
+
+@app.post("/config-mode/set-camera-control")
+async def set_camera_control(name: str, value: int):
+    """
+    カメラ設定を一括で設定
+    Args:
+        name (str): パラメータ名(ハイフン区切り)
+            brightness, contrast, saturation, hue, gamma, gain,
+            exposure-time-absolute, white-balance-temperature, sharpness
+        value (int): 設定値
+    Returns:
+        JSONResponse: result
+    """
+    if name not in _CAMERA_CONTROL_RANGES:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": f"Unknown camera control name: {name}"},
+        )
+
+    lo, hi = _CAMERA_CONTROL_RANGES[name]
+    if not (lo <= value <= hi):
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": f"{name} must be between {lo} and {hi}."},
+        )
+
+    ok = _send_camera_control(name, int(value))
+    if not ok:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": f"Failed to set {name}."},
+        )
+
+    return {"status": "ok", "message": f"{name} set to {value}."}
+
+
 @app.get("/config-mode/read-bin-threshold-on-drone")
 async def get_bin_threshold():
     """ドローンに設定されている2値化閾値を取得する"""
