@@ -90,7 +90,7 @@ app.add_middleware(
 )
 
 manager = ConnectionManager()
-mavlink_client = MavlinkClient(host="192.168.0.6")
+mavlink_client = MavlinkClient(host_ip="192.168.0.6")
 
 # 受信した最新フレーム（JPEGバイト列と受信時刻）
 latest_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
