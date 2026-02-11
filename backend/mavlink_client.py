@@ -341,8 +341,8 @@ class MavlinkClient:
 
     def send_bin_threshold_parameter(self, threshold: int, timeout_sec: float = 2.0) -> bool:
         param_id = "BIN_TH"
-        threshold = max(0, min(255, int(threshold)))
-
+        threshold = max(-1, min(255, int(threshold)))
+    
         try:
             self._mav.param_set_send(
                 self.target_sysid,
@@ -353,9 +353,9 @@ class MavlinkClient:
             )
         except Exception:
             return False
-
+    
         deadline = time.time() + max(0.0, float(timeout_sec))
-
+    
         with self._param_cv:
             while True:
                 cur = self._params.get(param_id)
@@ -363,13 +363,13 @@ class MavlinkClient:
                     cur_i = int(round(float(cur)))
                     if cur_i == threshold:
                         return True
-
+    
                 remain = deadline - time.time()
                 if remain <= 0.0:
                     return False
-
+    
                 self._param_cv.wait(timeout=remain)
-
+    
     def get_bin_threshold_parameter(self, timeout_sec: float = 2.0) -> Optional[int]:
         param_id = "BIN_TH"
         pass
