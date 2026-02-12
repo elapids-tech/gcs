@@ -49,15 +49,16 @@ class MavlinkClient:
     MAV_CMD_MY_APP_VIDEO_STREAMING_MODE = 31001
 
     PARAM_BIN_THRESHOLD = "BIN_TH"
-    PARAM_BRIGHTNESS = "BRIGHT"
-    PARAM_CONTRAST = "CONTR"
-    PARAM_SATURATION = "SAT"
-    PARAM_HUE = "HUE"
-    PARAM_GAMMA = "GAMMA"
-    PARAM_GAIN = "GAIN"
-    PARAM_WB_TEMP = "WB_TEMP"
-    PARAM_SHARPNESS = "SHARP"
-    PARAM_EXPOSURE_ABS = "EXP_ABS"
+    PARAM_BRIGHTNESS = "CAM_BRIGHT"
+    PARAM_CONTRAST = "CAM_CONT"
+    PARAM_SATURATION = "CAM_SAT"
+    PARAM_HUE = "CAM_HUE"
+    PARAM_GAMMA = "CAM_GAM"
+    PARAM_GAIN = "CAM_GAIN"
+    PARAM_WB_TEMP = "CAM_WBT"
+    PARAM_SHARPNESS = "CAM_SHARP"
+    PARAM_EXPOSURE_ABS = "CAM_EXP"
+    PARAM_FPS = "CAM_FPS"
 
     def __init__(
         self,
@@ -425,6 +426,3 @@ class MavlinkClient:
     def send_exposure_time_absolute_parameter(self, exposure_abs: int, timeout_sec: float = 2.0) -> bool:
         return self._send_int32_param(self.PARAM_EXPOSURE_ABS, exposure_abs, timeout_sec)
     
-    def get_bin_threshold_parameter(self, timeout_sec: float = 2.0) -> Optional[int]:
-        param_id = "BIN_TH"
-        pass
