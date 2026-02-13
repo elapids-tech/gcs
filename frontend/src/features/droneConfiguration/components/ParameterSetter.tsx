@@ -31,6 +31,7 @@ const BIN_THRESHOLD_DEFAULT = 128;
 const DOT_AREA_MIN_DEFAULT = 4;
 const DOT_AREA_MAX_DEFAULT = 200;
 const INCLUDE_GAIN_DEFAULT = 3.2;
+const SECTION_MAX_WIDTH = 360;
 
 const CAMERA_SPECS: Record<CameraControlKey, CameraControlSpec> = {
   brightness: { apiName: "brightness", label: "brightness", min: -64, max: 64, step: 1, def: 0 },
@@ -63,6 +64,7 @@ const ParameterSetter: React.FC = () => {
   const [thresholdOpen, setThresholdOpen] = useState<boolean>(true);
   const [cameraSettingsOpen, setCameraSettingsOpen] = useState<boolean>(true);
   const [landmarkSettingsOpen, setLandmarkSettingsOpen] = useState<boolean>(true);
+  const [hoveredSection, setHoveredSection] = useState<"threshold" | "camera" | "landmark" | null>(null);
 
   const [dotAreaMin, setDotAreaMin] = useState<number>(DOT_AREA_MIN_DEFAULT);
   const [dotAreaMax, setDotAreaMax] = useState<number>(DOT_AREA_MAX_DEFAULT);
@@ -248,175 +250,240 @@ const ParameterSetter: React.FC = () => {
     );
   };
 
+  const sectionHeaderStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "4px 6px",
+    borderRadius: 6,
+    cursor: "pointer",
+    userSelect: "text",
+  };
+
+  const sectionBodyStyle: React.CSSProperties = {
+    width: "100%",
+    boxSizing: "border-box",
+    border: "1px solid #ccc",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  };
+
+  const sectionBlockStyle: React.CSSProperties = {
+    width: SECTION_MAX_WIDTH,
+    maxWidth: SECTION_MAX_WIDTH,
+    boxSizing: "border-box",
+  };
+
+  const chevronStyle = (open: boolean): React.CSSProperties => ({
+    width: 12,
+    height: 12,
+    transition: "transform 120ms ease",
+    transform: open ? "rotate(90deg)" : "rotate(0deg)",
+  });
+
   return (
     <div>
       <h3>Image Processing Parameters</h3>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <h4 style={{ margin: 0 }}>Binary Threshold</h4>
-        <button type="button" onClick={() => setThresholdOpen((v) => !v)}>
-          {thresholdOpen ? "Hide" : "Show"}
-        </button>
-      </div>
-
-      {thresholdOpen && (
-        <div style={{ border: "1px solid #ccc", padding: 12, borderRadius: 8, marginTop: 8 }}>
-          <div style={{ fontFamily: "monospace", marginBottom: 6 }}>
-            binary_threshold: {threshold === -1 ? "disabled" : threshold} (min=-1 max=255 step=1)
-          </div>
-          <div style={{ fontFamily: "monospace", marginBottom: 8 }}>-1 = disables binary thresholding.</div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-            <input
-              type="number"
-              min={-1}
-              max={255}
-              step={1}
-              value={threshold}
-              onChange={handleThresholdNumberChange}
-              style={{ width: 140 }}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setThreshold(BIN_THRESHOLD_DEFAULT);
-                scheduleSend("bin-threshold", BIN_THRESHOLD_DEFAULT, postBinThreshold);
-              }}
-            >
-              Default
-            </button>
-          </div>
-          <input
-            type="range"
-            min="-1"
-            max="255"
-            step="1"
-            value={threshold}
-            onChange={handleThresholdRangeChange}
-            onMouseUp={handleThresholdRangeCommit}
-            onTouchEnd={handleThresholdRangeCommit}
-            style={{ width: "100%" }}
-          />
+      <div style={sectionBlockStyle}>
+        <div
+          style={{
+            ...sectionHeaderStyle,
+            background: hoveredSection === "threshold" ? "#f0f0f0" : "transparent",
+          }}
+          onClick={() => setThresholdOpen((v) => !v)}
+          onMouseEnter={() => setHoveredSection("threshold")}
+          onMouseLeave={() => setHoveredSection(null)}
+          role="button"
+          tabIndex={0}
+        >
+          <svg style={chevronStyle(thresholdOpen)} viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <h4 style={{ margin: 0 }}>Binary Threshold</h4>
         </div>
-      )}
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
-        <h4 style={{ margin: 0 }}>Camera Settings</h4>
-        <button type="button" onClick={() => setCameraSettingsOpen((v) => !v)}>
-          {cameraSettingsOpen ? "Hide" : "Show"}
-        </button>
-      </div>
-
-      {cameraSettingsOpen && (
-        <div style={{ border: "1px solid #ccc", padding: 12, borderRadius: 8, marginTop: 8 }}>
-          {renderSlider("brightness")}
-          {renderSlider("contrast")}
-          {renderSlider("saturation")}
-          {renderSlider("hue")}
-          {renderSlider("gamma")}
-          {renderSlider("gain")}
-          {renderSlider("exposure_time_absolute")}
-          {renderSlider("white_balance_temperature")}
-          {renderSlider("sharpness")}
-        </div>
-      )}
-
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
-        <h4 style={{ margin: 0 }}>Landmark Detection Parameters</h4>
-        <button type="button" onClick={() => setLandmarkSettingsOpen((v) => !v)}>
-          {landmarkSettingsOpen ? "Hide" : "Show"}
-        </button>
-      </div>
-
-      {landmarkSettingsOpen && (
-        <div style={{ border: "1px solid #ccc", padding: 12, borderRadius: 8, marginTop: 8 }}>
-          <div style={{ marginBottom: 16 }}>
+        {thresholdOpen && (
+          <div style={sectionBodyStyle}>
             <div style={{ fontFamily: "monospace", marginBottom: 6 }}>
-              dot_area (min={dotAreaMin.toFixed(1)} max={dotAreaMax.toFixed(1)})
+              binary_threshold: {threshold === -1 ? "disabled" : threshold} (min=-1 max=255 step=1)
             </div>
+            <div style={{ fontFamily: "monospace", marginBottom: 8 }}>-1 = disables binary thresholding.</div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
               <input
                 type="number"
-                min={4}
-                max={200}
-                step={0.1}
-                value={dotAreaMin}
-                onChange={(e) => setDotAreaMin(clampDotAreaMin(Number(e.target.value)))}
-                style={{ width: 140 }}
-              />
-              <input
-                type="number"
-                min={4}
-                max={200}
-                step={0.1}
-                value={dotAreaMax}
-                onChange={(e) => setDotAreaMax(clampDotAreaMax(Number(e.target.value)))}
+                min={-1}
+                max={255}
+                step={1}
+                value={threshold}
+                onChange={handleThresholdNumberChange}
                 style={{ width: 140 }}
               />
               <button
                 type="button"
                 onClick={() => {
-                  setDotAreaMin(DOT_AREA_MIN_DEFAULT);
-                  setDotAreaMax(DOT_AREA_MAX_DEFAULT);
+                  setThreshold(BIN_THRESHOLD_DEFAULT);
+                  scheduleSend("bin-threshold", BIN_THRESHOLD_DEFAULT, postBinThreshold);
                 }}
-              >
-                Default
-              </button>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                type="range"
-                min="4"
-                max="200"
-                step="0.1"
-                value={dotAreaMin}
-                onChange={(e) => setDotAreaMin(clampDotAreaMin(Number(e.target.value)))}
-                style={{ width: "100%" }}
-              />
-              <input
-                type="range"
-                min="4"
-                max="200"
-                step="0.1"
-                value={dotAreaMax}
-                onChange={(e) => setDotAreaMax(clampDotAreaMax(Number(e.target.value)))}
-                style={{ width: "100%" }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontFamily: "monospace", marginBottom: 6 }}>
-              include_gain: {includeGain.toFixed(1)} (min=2.0 max=10.0)
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-              <input
-                type="number"
-                min={2}
-                max={10}
-                step={0.1}
-                value={includeGain}
-                onChange={(e) => setIncludeGain(Number(e.target.value))}
-                style={{ width: 140 }}
-              />
-              <button
-                type="button"
-                onClick={() => setIncludeGain(INCLUDE_GAIN_DEFAULT)}
               >
                 Default
               </button>
             </div>
             <input
               type="range"
-              min="2"
-              max="10"
-              step="0.1"
-              value={includeGain}
-              onChange={(e) => setIncludeGain(Number(e.target.value))}
+              min="-1"
+              max="255"
+              step="1"
+              value={threshold}
+              onChange={handleThresholdRangeChange}
+              onMouseUp={handleThresholdRangeCommit}
+              onTouchEnd={handleThresholdRangeCommit}
               style={{ width: "100%" }}
             />
           </div>
+        )}
+      </div>
+
+      <div style={{ ...sectionBlockStyle, marginTop: 16 }}>
+        <div
+          style={{
+            ...sectionHeaderStyle,
+            background: hoveredSection === "camera" ? "#f0f0f0" : "transparent",
+          }}
+          onClick={() => setCameraSettingsOpen((v) => !v)}
+          onMouseEnter={() => setHoveredSection("camera")}
+          onMouseLeave={() => setHoveredSection(null)}
+          role="button"
+          tabIndex={0}
+        >
+          <svg style={chevronStyle(cameraSettingsOpen)} viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <h4 style={{ margin: 0 }}>Camera Settings</h4>
         </div>
-      )}
+
+        {cameraSettingsOpen && (
+          <div style={sectionBodyStyle}>
+            {renderSlider("brightness")}
+            {renderSlider("contrast")}
+            {renderSlider("saturation")}
+            {renderSlider("hue")}
+            {renderSlider("gamma")}
+            {renderSlider("gain")}
+            {renderSlider("exposure_time_absolute")}
+            {renderSlider("white_balance_temperature")}
+            {renderSlider("sharpness")}
+          </div>
+        )}
+      </div>
+
+      <div style={{ ...sectionBlockStyle, marginTop: 16 }}>
+        <div
+          style={{
+            ...sectionHeaderStyle,
+            background: hoveredSection === "landmark" ? "#f0f0f0" : "transparent",
+          }}
+          onClick={() => setLandmarkSettingsOpen((v) => !v)}
+          onMouseEnter={() => setHoveredSection("landmark")}
+          onMouseLeave={() => setHoveredSection(null)}
+          role="button"
+          tabIndex={0}
+        >
+          <svg style={chevronStyle(landmarkSettingsOpen)} viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <h4 style={{ margin: 0 }}>Landmark Detection Parameters</h4>
+        </div>
+
+        {landmarkSettingsOpen && (
+          <div style={sectionBodyStyle}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontFamily: "monospace", marginBottom: 6 }}>
+                dot_area (min={dotAreaMin.toFixed(1)} max={dotAreaMax.toFixed(1)})
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                <input
+                  type="number"
+                  min={4}
+                  max={200}
+                  step={0.1}
+                  value={dotAreaMin}
+                  onChange={(e) => setDotAreaMin(clampDotAreaMin(Number(e.target.value)))}
+                  style={{ width: 140 }}
+                />
+                <input
+                  type="number"
+                  min={4}
+                  max={200}
+                  step={0.1}
+                  value={dotAreaMax}
+                  onChange={(e) => setDotAreaMax(clampDotAreaMax(Number(e.target.value)))}
+                  style={{ width: 140 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDotAreaMin(DOT_AREA_MIN_DEFAULT);
+                    setDotAreaMax(DOT_AREA_MAX_DEFAULT);
+                  }}
+                >
+                  Default
+                </button>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="range"
+                  min="4"
+                  max="200"
+                  step="0.1"
+                  value={dotAreaMin}
+                  onChange={(e) => setDotAreaMin(clampDotAreaMin(Number(e.target.value)))}
+                  style={{ width: "100%" }}
+                />
+                <input
+                  type="range"
+                  min="4"
+                  max="200"
+                  step="0.1"
+                  value={dotAreaMax}
+                  onChange={(e) => setDotAreaMax(clampDotAreaMax(Number(e.target.value)))}
+                  style={{ width: "100%" }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontFamily: "monospace", marginBottom: 6 }}>
+                include_gain: {includeGain.toFixed(1)} (min=2.0 max=10.0)
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                <input
+                  type="number"
+                  min={2}
+                  max={10}
+                  step={0.1}
+                  value={includeGain}
+                  onChange={(e) => setIncludeGain(Number(e.target.value))}
+                  style={{ width: 140 }}
+                />
+                <button type="button" onClick={() => setIncludeGain(INCLUDE_GAIN_DEFAULT)}>
+                  Default
+                </button>
+              </div>
+              <input
+                type="range"
+                min="2"
+                max="10"
+                step="0.1"
+                value={includeGain}
+                onChange={(e) => setIncludeGain(Number(e.target.value))}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
