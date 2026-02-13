@@ -27,6 +27,7 @@ type CameraControlSpec = {
 
 const API_BASE_URL = "http://localhost:8003";
 const DEBOUNCE_MS = 250;
+const BIN_THRESHOLD_DEFAULT = 128;
 
 const CAMERA_SPECS: Record<CameraControlKey, CameraControlSpec> = {
   brightness: { apiName: "brightness", label: "brightness", min: -64, max: 64, step: 1, def: 0 },
@@ -55,7 +56,7 @@ const CAMERA_SPECS: Record<CameraControlKey, CameraControlSpec> = {
 };
 
 const ParameterSetter: React.FC = () => {
-  const [threshold, setThreshold] = useState<number>(128);
+  const [threshold, setThreshold] = useState<number>(BIN_THRESHOLD_DEFAULT);
   const [thresholdOpen, setThresholdOpen] = useState<boolean>(true);
   const [cameraSettingsOpen, setCameraSettingsOpen] = useState<boolean>(true);
 
@@ -159,6 +160,12 @@ const ParameterSetter: React.FC = () => {
     scheduleSend("bin-threshold", value, postBinThreshold);
   };
 
+  const handleThresholdNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Number(e.target.value);
+    setThreshold(value);
+    scheduleSend("bin-threshold", value, postBinThreshold);
+  };
+
   // ---- Camera controls ----
   const setCameraValue = (key: keyof CameraControlsState, value: number) => {
     setCamera((prev) => ({ ...prev, [key]: value }));
@@ -245,6 +252,26 @@ const ParameterSetter: React.FC = () => {
             binary_threshold: {threshold === -1 ? "disabled" : threshold} (min=-1 max=255 step=1)
           </div>
           <div style={{ fontFamily: "monospace", marginBottom: 8 }}>-1 = disables binary thresholding.</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+            <input
+              type="number"
+              min={-1}
+              max={255}
+              step={1}
+              value={threshold}
+              onChange={handleThresholdNumberChange}
+              style={{ width: 140 }}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setThreshold(BIN_THRESHOLD_DEFAULT);
+                scheduleSend("bin-threshold", BIN_THRESHOLD_DEFAULT, postBinThreshold);
+              }}
+            >
+              Default
+            </button>
+          </div>
           <input
             type="range"
             min="-1"
