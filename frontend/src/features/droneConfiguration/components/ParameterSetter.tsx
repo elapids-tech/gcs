@@ -61,10 +61,11 @@ const CAMERA_SPECS: Record<CameraControlKey, CameraControlSpec> = {
 
 const ParameterSetter: React.FC = () => {
   const [threshold, setThreshold] = useState<number>(BIN_THRESHOLD_DEFAULT);
-  const [thresholdOpen, setThresholdOpen] = useState<boolean>(true);
-  const [cameraSettingsOpen, setCameraSettingsOpen] = useState<boolean>(true);
-  const [landmarkSettingsOpen, setLandmarkSettingsOpen] = useState<boolean>(true);
-  const [hoveredSection, setHoveredSection] = useState<"threshold" | "camera" | "landmark" | null>(null);
+  const [thresholdOpen, setThresholdOpen] = useState<boolean>(false);
+  const [cameraSettingsOpen, setCameraSettingsOpen] = useState<boolean>(false);
+  const [cameraCalibrationOpen, setCameraCalibrationOpen] = useState<boolean>(false);
+  const [landmarkSettingsOpen, setLandmarkSettingsOpen] = useState<boolean>(false);
+  const [hoveredSection, setHoveredSection] = useState<"threshold" | "camera" | "calibration" | "landmark" | null>(null);
 
   const [dotAreaMin, setDotAreaMin] = useState<number>(DOT_AREA_MIN_DEFAULT);
   const [dotAreaMax, setDotAreaMax] = useState<number>(DOT_AREA_MAX_DEFAULT);
@@ -374,6 +375,31 @@ const ParameterSetter: React.FC = () => {
             {renderSlider("exposure_time_absolute")}
             {renderSlider("white_balance_temperature")}
             {renderSlider("sharpness")}
+          </div>
+        )}
+      </div>
+
+      <div style={{ ...sectionBlockStyle, marginTop: 16 }}>
+        <div
+          style={{
+            ...sectionHeaderStyle,
+            background: hoveredSection === "calibration" ? "#f0f0f0" : "transparent",
+          }}
+          onClick={() => setCameraCalibrationOpen((v) => !v)}
+          onMouseEnter={() => setHoveredSection("calibration")}
+          onMouseLeave={() => setHoveredSection(null)}
+          role="button"
+          tabIndex={0}
+        >
+          <svg style={chevronStyle(cameraCalibrationOpen)} viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <h4 style={{ margin: 0 }}>Camera Calibration</h4>
+        </div>
+
+        {cameraCalibrationOpen && (
+          <div style={sectionBodyStyle}>
+            <button type="button">Start</button>
           </div>
         )}
       </div>
