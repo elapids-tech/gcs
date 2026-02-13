@@ -28,6 +28,9 @@ type CameraControlSpec = {
 const API_BASE_URL = "http://localhost:8003";
 const DEBOUNCE_MS = 250;
 const BIN_THRESHOLD_DEFAULT = 128;
+const DOT_AREA_MIN_DEFAULT = 4;
+const DOT_AREA_MAX_DEFAULT = 200;
+const INCLUDE_GAIN_DEFAULT = 3.2;
 
 const CAMERA_SPECS: Record<CameraControlKey, CameraControlSpec> = {
   brightness: { apiName: "brightness", label: "brightness", min: -64, max: 64, step: 1, def: 0 },
@@ -59,6 +62,11 @@ const ParameterSetter: React.FC = () => {
   const [threshold, setThreshold] = useState<number>(BIN_THRESHOLD_DEFAULT);
   const [thresholdOpen, setThresholdOpen] = useState<boolean>(true);
   const [cameraSettingsOpen, setCameraSettingsOpen] = useState<boolean>(true);
+  const [landmarkSettingsOpen, setLandmarkSettingsOpen] = useState<boolean>(true);
+
+  const [dotAreaMin, setDotAreaMin] = useState<number>(DOT_AREA_MIN_DEFAULT);
+  const [dotAreaMax, setDotAreaMax] = useState<number>(DOT_AREA_MAX_DEFAULT);
+  const [includeGain, setIncludeGain] = useState<number>(INCLUDE_GAIN_DEFAULT);
 
   const [camera, setCamera] = useState<CameraControlsState>({
     brightness: 0,
@@ -149,6 +157,11 @@ const ParameterSetter: React.FC = () => {
       trySend(k, sendFn);
     }, DEBOUNCE_MS);
   };
+
+  const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+  const DOT_AREA_GAP = 1;
+  const clampDotAreaMin = (value: number) => clamp(value, 4, Math.min(200 - DOT_AREA_GAP, dotAreaMax - DOT_AREA_GAP));
+  const clampDotAreaMax = (value: number) => clamp(value, Math.max(4 + DOT_AREA_GAP, dotAreaMin + DOT_AREA_GAP), 200);
 
   // ---- Binary threshold slider ----
   const handleThresholdRangeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -304,6 +317,104 @@ const ParameterSetter: React.FC = () => {
           {renderSlider("exposure_time_absolute")}
           {renderSlider("white_balance_temperature")}
           {renderSlider("sharpness")}
+        </div>
+      )}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
+        <h4 style={{ margin: 0 }}>Landmark Detection Parameters</h4>
+        <button type="button" onClick={() => setLandmarkSettingsOpen((v) => !v)}>
+          {landmarkSettingsOpen ? "Hide" : "Show"}
+        </button>
+      </div>
+
+      {landmarkSettingsOpen && (
+        <div style={{ border: "1px solid #ccc", padding: 12, borderRadius: 8, marginTop: 8 }}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontFamily: "monospace", marginBottom: 6 }}>
+              dot_area (min={dotAreaMin.toFixed(1)} max={dotAreaMax.toFixed(1)})
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+              <input
+                type="number"
+                min={4}
+                max={200}
+                step={0.1}
+                value={dotAreaMin}
+                onChange={(e) => setDotAreaMin(clampDotAreaMin(Number(e.target.value)))}
+                style={{ width: 140 }}
+              />
+              <input
+                type="number"
+                min={4}
+                max={200}
+                step={0.1}
+                value={dotAreaMax}
+                onChange={(e) => setDotAreaMax(clampDotAreaMax(Number(e.target.value)))}
+                style={{ width: 140 }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setDotAreaMin(DOT_AREA_MIN_DEFAULT);
+                  setDotAreaMax(DOT_AREA_MAX_DEFAULT);
+                }}
+              >
+                Default
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="range"
+                min="4"
+                max="200"
+                step="0.1"
+                value={dotAreaMin}
+                onChange={(e) => setDotAreaMin(clampDotAreaMin(Number(e.target.value)))}
+                style={{ width: "100%" }}
+              />
+              <input
+                type="range"
+                min="4"
+                max="200"
+                step="0.1"
+                value={dotAreaMax}
+                onChange={(e) => setDotAreaMax(clampDotAreaMax(Number(e.target.value)))}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontFamily: "monospace", marginBottom: 6 }}>
+              include_gain: {includeGain.toFixed(1)} (min=2.0 max=10.0)
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+              <input
+                type="number"
+                min={2}
+                max={10}
+                step={0.1}
+                value={includeGain}
+                onChange={(e) => setIncludeGain(Number(e.target.value))}
+                style={{ width: 140 }}
+              />
+              <button
+                type="button"
+                onClick={() => setIncludeGain(INCLUDE_GAIN_DEFAULT)}
+              >
+                Default
+              </button>
+            </div>
+            <input
+              type="range"
+              min="2"
+              max="10"
+              step="0.1"
+              value={includeGain}
+              onChange={(e) => setIncludeGain(Number(e.target.value))}
+              style={{ width: "100%" }}
+            />
+          </div>
         </div>
       )}
     </div>
