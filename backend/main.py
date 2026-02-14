@@ -1,3 +1,4 @@
+import base64
 import json
 import time
 import asyncio
@@ -96,17 +97,21 @@ mavlink_client = MavlinkClient(host_ip="192.168.0.6")
 latest_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
 frame_lock = asyncio.Lock()
 
-# プレースホルダー画像（常にJPEGで持つ）
-placeholder_jpeg: Optional[bytes] = None
+# プレースホルダー画像（左右分割でJPEG保持）
+placeholder_left_jpeg: Optional[bytes] = None
+placeholder_right_jpeg: Optional[bytes] = None
 placeholder_size: tuple[int, int] = PLACEHOLDER_DEFAULT_SIZE  # (w, h)
 last_frame_size: Optional[tuple[int, int]] = None  # 実フレームサイズが判明したら更新
+
+# 分割済みフレーム（左右JPEGバイト列と受信時刻）
+latest_split_frame: Optional[dict] = None  # {"left": bytes, "right": bytes, "ts": float}
 
 # UDP受信のTransport/Protocol
 udp_transport: Optional[asyncio.DatagramTransport] = None
 udp_protocol: Optional["UdpReceiverProtocol"] = None
 
-def build_placeholder(size: tuple[int, int], text: str = "NO CONNECTION") -> bytes:
-    """指定サイズにラベルを描いたJPEGプレースホルダーを作成"""
+def build_placeholder_image(size: tuple[int, int], text: str = "NO CONNECTION") -> np.ndarray:
+    """指定サイズにラベルを描いたプレースホルダー画像を作成"""
     w, h = size
     img = np.full((h, w, 3), 32, dtype=np.uint8)
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -123,15 +128,28 @@ def build_placeholder(size: tuple[int, int], text: str = "NO CONNECTION") -> byt
     sy = ty + 40 + sub_size[1]
     cv2.putText(img, sub, (sx, sy), font, 0.9, (200, 200, 200), 2, cv2.LINE_AA)
 
+    return img
+
+
+def encode_jpeg(img: np.ndarray) -> bytes:
     ok, enc = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
     if not ok:
-        raise RuntimeError("Failed to build placeholder jpeg")
+        raise RuntimeError("Failed to encode jpeg")
     return enc.tobytes()
+
+
+def split_frame(img: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    h, w = img.shape[:2]
+    mid = w // 2
+    left = img[:, :mid]
+    right = img[:, mid:]
+    return left, right
 
 
 async def _update_latest_frame(data: bytes, ts: float):
     """最新フレームを更新し、初回はプレースホルダーのサイズも合わせる"""
-    global latest_frame, last_frame_size, placeholder_jpeg, placeholder_size
+    global latest_frame, latest_split_frame, last_frame_size
+    global placeholder_left_jpeg, placeholder_right_jpeg, placeholder_size
     async with frame_lock:
         latest_frame = {"data": data, "ts": ts}
     if last_frame_size is None:
@@ -143,10 +161,26 @@ async def _update_latest_frame(data: bytes, ts: float):
                 last_frame_size = (w, h)
                 if (w, h) != placeholder_size:
                     placeholder_size = (w, h)
-                    placeholder_jpeg = build_placeholder(placeholder_size)
+                    placeholder_img = build_placeholder_image(placeholder_size)
+                    left_img, right_img = split_frame(placeholder_img)
+                    placeholder_left_jpeg = encode_jpeg(left_img)
+                    placeholder_right_jpeg = encode_jpeg(right_img)
                     print(f"[video] placeholder resized to {placeholder_size}")
         except Exception:
             pass
+
+    try:
+        arr = np.frombuffer(data, dtype=np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            return
+        left_img, right_img = split_frame(img)
+        left_jpeg = encode_jpeg(left_img)
+        right_jpeg = encode_jpeg(right_img)
+        async with frame_lock:
+            latest_split_frame = {"left": left_jpeg, "right": right_jpeg, "ts": ts}
+    except Exception:
+        pass
 
 
 class UdpReceiverProtocol(asyncio.DatagramProtocol):
@@ -207,16 +241,27 @@ async def video_stream(websocket: WebSocket):
             frame_data = None
             frame_ts = None
             async with frame_lock:
-                if latest_frame is not None:
-                    frame_data = latest_frame["data"]
-                    frame_ts = latest_frame["ts"]
+                if latest_split_frame is not None:
+                    frame_data = latest_split_frame
+                    frame_ts = latest_split_frame["ts"]
 
             now = time.time()
             stale = (frame_data is None) or (frame_ts is None) or (now - frame_ts > VIDEO_TIMEOUT_SEC)
             if stale:
-                await websocket.send_bytes(placeholder_jpeg)  # type: ignore[arg-type]
+                left = placeholder_left_jpeg
+                right = placeholder_right_jpeg
             else:
-                await websocket.send_bytes(frame_data)
+                left = frame_data["left"]
+                right = frame_data["right"]
+
+            if left is None or right is None:
+                continue
+
+            payload = {
+                "left": base64.b64encode(left).decode("ascii"),
+                "right": base64.b64encode(right).decode("ascii"),
+            }
+            await websocket.send_text(json.dumps(payload))
     except WebSocketDisconnect:
         print("[/ws/video] client disconnected")
     except Exception as e:
@@ -408,11 +453,14 @@ def set_setpoint(setpoint: Setpoint):
 @app.on_event("startup")
 async def startup_event():
     """起動時の初期化（UDP受信開始とテレメトリ送信タスク開始）"""
-    global udp_transport, udp_protocol, placeholder_jpeg
+    global udp_transport, udp_protocol, placeholder_left_jpeg, placeholder_right_jpeg
     print("[startup] FastAPI app starting...")
 
     try:
-        placeholder_jpeg = build_placeholder(placeholder_size)
+        placeholder_img = build_placeholder_image(placeholder_size)
+        left_img, right_img = split_frame(placeholder_img)
+        placeholder_left_jpeg = encode_jpeg(left_img)
+        placeholder_right_jpeg = encode_jpeg(right_img)
         print(f"[startup] placeholder ready: size={placeholder_size}")
     except Exception as e:
         print(f"[startup] placeholder build failed: {repr(e)}")
