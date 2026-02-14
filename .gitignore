@@ -1,3 +1,6 @@
+# this project specifically ignore files
+backend/test/output
+
 *.bkp
 *.dtmp
 .DS_Store
