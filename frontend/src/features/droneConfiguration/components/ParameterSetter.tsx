@@ -32,6 +32,7 @@ const DOT_AREA_MIN_DEFAULT = 4;
 const DOT_AREA_MAX_DEFAULT = 200;
 const INCLUDE_GAIN_DEFAULT = 3.2;
 const SECTION_MAX_WIDTH = 360;
+const CALIBRATION_POLL_MS = 2000;
 
 const CAMERA_SPECS: Record<CameraControlKey, CameraControlSpec> = {
   brightness: { apiName: "brightness", label: "brightness", min: -64, max: 64, step: 1, def: 0 },
@@ -66,6 +67,9 @@ const ParameterSetter: React.FC = () => {
   const [cameraCalibrationOpen, setCameraCalibrationOpen] = useState<boolean>(false);
   const [landmarkSettingsOpen, setLandmarkSettingsOpen] = useState<boolean>(false);
   const [hoveredSection, setHoveredSection] = useState<"threshold" | "camera" | "calibration" | "landmark" | null>(null);
+
+  const [calibrationRunning, setCalibrationRunning] = useState<boolean>(false);
+  const [calibrationCamera, setCalibrationCamera] = useState<string>("0");
 
   const [dotAreaMin, setDotAreaMin] = useState<number>(DOT_AREA_MIN_DEFAULT);
   const [dotAreaMax, setDotAreaMax] = useState<number>(DOT_AREA_MAX_DEFAULT);
@@ -104,6 +108,46 @@ const ParameterSetter: React.FC = () => {
       })
       .catch((e) => console.warn("しきい値の取得失敗:", e));
   }, []);
+
+  const startCalibration = async (cameraId: string) => {
+    await fetch(`${API_BASE_URL}/config-mode/camera-calibration/start?camera=${encodeURIComponent(cameraId)}`,
+      { method: "POST" }
+    );
+  };
+
+  const stopCalibration = async () => {
+    await fetch(`${API_BASE_URL}/config-mode/camera-calibration/stop`, { method: "POST" });
+  };
+
+  const getCalibrationStatus = async () => {
+    const res = await fetch(`${API_BASE_URL}/config-mode/camera-calibration/status`);
+    if (!res.ok) {
+      throw new Error("Failed to fetch calibration status");
+    }
+    return res.json();
+  };
+
+  useEffect(() => {
+    if (!calibrationRunning) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      getCalibrationStatus().catch((err) => console.warn("calibration status 取得失敗:", err));
+    }, CALIBRATION_POLL_MS);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [calibrationRunning]);
+
+  useEffect(() => {
+    return () => {
+      if (calibrationRunning) {
+        stopCalibration().catch((err) => console.warn("calibration stop 送信失敗:", err));
+      }
+    };
+  }, [calibrationRunning]);
 
   const postBinThreshold = async (value: number) => {
     await fetch(`${API_BASE_URL}/config-mode/set-bin-threshold?threshold=${value}`, {
@@ -399,7 +443,30 @@ const ParameterSetter: React.FC = () => {
 
         {cameraCalibrationOpen && (
           <div style={sectionBodyStyle}>
-            <button type="button">Start</button>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <select
+                value={calibrationCamera}
+                onChange={(e) => setCalibrationCamera(e.target.value)}
+                disabled={calibrationRunning}
+              >
+                <option value="0">camera 0</option>
+                <option value="1">camera 1</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  if (calibrationRunning) {
+                    stopCalibration().catch((err) => console.warn("calibration stop 送信失敗:", err));
+                    setCalibrationRunning(false);
+                  } else {
+                    startCalibration(calibrationCamera).catch((err) => console.warn("calibration start 送信失敗:", err));
+                    setCalibrationRunning(true);
+                  }
+                }}
+              >
+                {calibrationRunning ? "Stop" : "Start"}
+              </button>
+            </div>
           </div>
         )}
       </div>

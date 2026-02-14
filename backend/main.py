@@ -73,7 +73,6 @@ class ConnectionManager:
             self.disconnect(ws)
 
 
-
 class Setpoint(BaseModel):
     x: float
     y: float
@@ -92,6 +91,7 @@ app.add_middleware(
 
 manager = ConnectionManager()
 mavlink_client = MavlinkClient(host_ip="192.168.0.6")
+camera_calibration_running = False
 
 # 受信した最新フレーム（JPEGバイト列と受信時刻）
 latest_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
@@ -370,6 +370,24 @@ async def get_bin_threshold():
 def send_enable_config_mode_signal():
     mavlink_client.set_config_mode_signal()
     return {"status": "ok"}
+
+
+@app.post("/config-mode/camera-calibration/start")
+def start_camera_calibration(camera: int = 0):
+    print(f"[mock] camera calibration start: camera={camera}")
+    return {"status": "ok", "running": True, "camera": camera}
+
+
+@app.post("/config-mode/camera-calibration/stop")
+def stop_camera_calibration():
+    print("[mock] camera calibration stop")
+    return {"status": "ok", "running": False}
+
+
+@app.get("/config-mode/camera-calibration/status")
+def camera_calibration_status():
+    print("[mock] camera calibration status")
+    return {"status": "ok", "running": True}
 
 
 async def periodic_task():
