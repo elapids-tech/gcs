@@ -27,7 +27,7 @@ type CameraControlSpec = {
 
 const API_BASE_URL = "http://localhost:8003";
 const DEBOUNCE_MS = 250;
-const BIN_THRESHOLD_DEFAULT = 128;
+const BIN_THRESHOLD_DEFAULT = 70;
 const DOT_AREA_MIN_DEFAULT = 4;
 const DOT_AREA_MAX_DEFAULT = 200;
 const INCLUDE_GAIN_DEFAULT = 3.2;
@@ -36,18 +36,18 @@ const CALIBRATION_POLL_MS = 2000;
 
 const CAMERA_SPECS: Record<CameraControlKey, CameraControlSpec> = {
   brightness: { apiName: "brightness", label: "brightness", min: -64, max: 64, step: 1, def: 0 },
-  contrast: { apiName: "contrast", label: "contrast", min: 0, max: 95, step: 1, def: 34 },
+  contrast: { apiName: "contrast", label: "contrast", min: 0, max: 95, step: 1, def: 50 },
   saturation: { apiName: "saturation", label: "saturation", min: 0, max: 100, step: 1, def: 32 },
   hue: { apiName: "hue", label: "hue", min: -2000, max: 2000, step: 1, def: 0 },
-  gamma: { apiName: "gamma", label: "gamma", min: 100, max: 300, step: 1, def: 150 },
-  gain: { apiName: "gain", label: "gain", min: 0, max: 255, step: 1, def: 32 },
+  gamma: { apiName: "gamma", label: "gamma", min: 100, max: 300, step: 1, def: 140 },
+  gain: { apiName: "gain", label: "gain", min: 0, max: 255, step: 1, def: 190 },
   exposure_time_absolute: {
     apiName: "exposure-time-absolute",
     label: "exposure_time_absolute",
     min: 1,
     max: 10000,
     step: 1,
-    def: 20,
+    def: 5,
   },
   white_balance_temperature: {
     apiName: "white-balance-temperature",
@@ -57,7 +57,7 @@ const CAMERA_SPECS: Record<CameraControlKey, CameraControlSpec> = {
     step: 1,
     def: 4600,
   },
-  sharpness: { apiName: "sharpness", label: "sharpness", min: 1, max: 100, step: 1, def: 28 },
+  sharpness: { apiName: "sharpness", label: "sharpness", min: 1, max: 100, step: 1, def: 70 },
 };
 
 const ParameterSetter: React.FC = () => {
@@ -77,14 +77,14 @@ const ParameterSetter: React.FC = () => {
 
   const [camera, setCamera] = useState<CameraControlsState>({
     brightness: 0,
-    contrast: 34,
+    contrast: 50,
     saturation: 32,
     hue: 0,
-    gamma: 150,
-    gain: 32,
+    gamma: 140,
+    gain: 190,
     white_balance_temperature: 4600,
-    sharpness: 28,
-    exposure_time_absolute: 20,
+    sharpness: 70,
+    exposure_time_absolute: 5,
 
     white_balance_automatic: 0,
     auto_exposure: 1,
