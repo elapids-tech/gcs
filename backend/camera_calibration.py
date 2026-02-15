@@ -11,8 +11,6 @@ class CameraCalibration:
         row_pitch_mm=None,
         max_samples=120,
         min_samples=12,
-        target_rms=None,
-        overlay_scale=0.25,
         output_json_path=None,
     ):
         self.result = None
@@ -22,8 +20,6 @@ class CameraCalibration:
         self.row_pitch_mm = row_pitch_mm if row_pitch_mm is not None else col_pitch_mm / 2.0
         self.max_samples = max_samples
         self.min_samples = min_samples
-        self.target_rms = target_rms
-        self.overlay_scale = overlay_scale
         self.output_json_path = output_json_path
 
         self._pattern_size = (self.cols, self.rows)
@@ -32,7 +28,6 @@ class CameraCalibration:
         self._objpoints = []
         self._imgpoints = []
         self._last_size = None
-        self._complete = False
         self._tile_counts = None
         self._tile_grid = None
         self._tile_size = 50
@@ -65,7 +60,7 @@ class CameraCalibration:
         _, bw = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
         return bw
 
-    def _find_asymmetric_grid(self, img_bw):
+    def find_asymmetric_grid(self, img_bw):
         flag = cv2.CALIB_CB_ASYMMETRIC_GRID | cv2.CALIB_CB_CLUSTERING
         tests = [img_bw, 255 - img_bw]
         for im in tests:
@@ -74,17 +69,13 @@ class CameraCalibration:
                 return True, centers
         return False, None
 
-    def update(self, frame):
-        if self._complete:
-            return None
-        if frame is None:
-            return None
+    def _update_overlay(self, image_shape, centers):
+        if image_shape is None:
+            raise ValueError("image_shape is required")
+        if centers is None:
+            return
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if frame.ndim == 3 else frame
-        bw = self.binarize(gray)
-        h, w = gray.shape[:2]
-        self._last_size = (w, h)
-
+        h, w = image_shape
         tile_size = self._tile_size
         grid_cols = (w + tile_size - 1) // tile_size
         grid_rows = (h + tile_size - 1) // tile_size
@@ -93,39 +84,31 @@ class CameraCalibration:
             self._tile_counts = np.zeros(grid_shape, dtype=np.int32)
             self._tile_grid = grid_shape
 
-        ok_grid, centers = self._find_asymmetric_grid(bw)
-        if ok_grid and centers is not None:
-            self._objpoints.append(self._objp)
-            self._imgpoints.append(centers)
+        outer = self.get_outer_points(centers)
+        if not outer:
+            return
 
-        if len(self._objpoints) > self.max_samples:
-            self._objpoints = self._objpoints[: self.max_samples]
-            self._imgpoints = self._imgpoints[: self.max_samples]
+        poly = np.asarray(outer, dtype=np.int32).reshape(-1, 1, 2)
+        mask = np.zeros((h, w), dtype=np.uint8)
+        cv2.fillPoly(mask, [poly], 1)
 
-        self._build_result()
-        if ok_grid and centers is not None:
-            outer = self.get_outer_points(centers)
-            if outer:
-                poly = np.asarray(outer, dtype=np.int32).reshape(-1, 1, 2)
-                mask = np.zeros((h, w), dtype=np.uint8)
-                cv2.fillPoly(mask, [poly], 1)
-
-                for row in range(grid_rows):
-                    y0 = row * tile_size
-                    y1 = min((row + 1) * tile_size, h)
-                    for col in range(grid_cols):
-                        x0 = col * tile_size
-                        x1 = min((col + 1) * tile_size, w)
-                        if np.any(mask[y0:y1, x0:x1]):
-                            self._tile_counts[row, col] += 1
-
-        overlay = np.zeros((h, w, 3), dtype=np.uint8)
         for row in range(grid_rows):
             y0 = row * tile_size
             y1 = min((row + 1) * tile_size, h)
             for col in range(grid_cols):
                 x0 = col * tile_size
                 x1 = min((col + 1) * tile_size, w)
+                if np.any(mask[y0:y1, x0:x1]):
+                    self._tile_counts[row, col] += 1
+
+    def create_overlay(self):
+        if self._tile_counts is None:
+            return None
+
+        grid_rows, grid_cols = self._tile_counts.shape
+        overlay = np.zeros((grid_rows, grid_cols, 3), dtype=np.uint8)
+        for row in range(grid_rows):
+            for col in range(grid_cols):
                 count = int(self._tile_counts[row, col])
                 t = min(count, 10) / 10.0
                 value = int(round((1.0 - t) * 255.0))
@@ -133,18 +116,49 @@ class CameraCalibration:
                     np.array([[value]], dtype=np.uint8),
                     cv2.COLORMAP_JET,
                 )[0, 0]
-                overlay[y0:y1, x0:x1] = color
-
-        if self.overlay_scale != 1.0:
-            overlay = cv2.resize(
-                overlay,
-                (max(1, int(round(w * self.overlay_scale))), max(1, int(round(h * self.overlay_scale)))),
-                interpolation=cv2.INTER_NEAREST,
-            )
+                overlay[row, col] = color
 
         return overlay
 
-    def _build_result(self):
+    def add_grid_points(self, grid_points, image_shape=None):
+        if grid_points is None:
+            return None
+
+        pts = np.asarray(grid_points, dtype=np.float32)
+        if pts.ndim == 2 and pts.shape[1] == 2:
+            centers = pts.reshape(-1, 1, 2)
+        elif pts.ndim == 3 and pts.shape[1:] == (1, 2):
+            centers = pts
+        else:
+            raise ValueError("grid_points must be a Nx2 array or Nx1x2 array")
+
+        expected = self.rows * self.cols
+        if centers.shape[0] != expected:
+            raise ValueError("grid_points size does not match pattern size")
+
+        if image_shape is None:
+            if self._last_size is None:
+                raise ValueError("image_shape is required when no previous image size exists")
+            image_shape = (self._last_size[1], self._last_size[0])
+        else:
+            image_shape = tuple(image_shape)
+
+        if len(image_shape) != 2:
+            raise ValueError("image_shape must be (height, width)")
+
+        h, w = image_shape
+        self._last_size = (w, h)
+        self._objpoints.append(self._objp)
+        self._imgpoints.append(centers)
+
+        if len(self._objpoints) > self.max_samples:
+            self._objpoints = self._objpoints[: self.max_samples]
+            self._imgpoints = self._imgpoints[: self.max_samples]
+
+        self._update_overlay(image_shape, centers)
+        return self.create_overlay()
+
+    def execute_calibration(self):
         used = len(self._objpoints)
         result = {
             "pattern": {"cols": self.cols, "rows": self.rows, "type": "asymmetric"},
@@ -154,7 +168,6 @@ class CameraCalibration:
                 "col_pitch_mm": self.col_pitch_mm,
                 "row_pitch_mm": self.row_pitch_mm,
             },
-            "target_rms": self.target_rms,
         }
 
         if used >= self.min_samples and self._last_size is not None:
@@ -194,9 +207,6 @@ class CameraCalibration:
                     "dist_pinhole": [0.0, 0.0, 0.0, 0.0],
                 }
             )
-            if self.target_rms is not None:
-                self._complete = float(rms) <= self.target_rms
-                result["calibration_complete"] = self._complete
         else:
             result.update(
                 {
@@ -204,8 +214,6 @@ class CameraCalibration:
                     "reason": f"detections {used} < min_samples {self.min_samples}",
                 }
             )
-            if self.target_rms is not None:
-                result["calibration_complete"] = False
 
         self.result = result
 

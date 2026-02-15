@@ -29,11 +29,15 @@ def test_camera_calibration():
         if not ok:
             break
         frame_count += 1
-        update_result = cc.update(frame)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        bw = cc.binarize(gray)
+        ok_grid, centers = cc.find_asymmetric_grid(bw)
 
-        centers = None
-        if update_result is not None and cc._imgpoints:
-            centers = cc._imgpoints[-1].reshape(-1, 2)
+        update_result = None
+        if ok_grid and centers is not None:
+            update_result = cc.add_grid_points(centers, image_shape=gray.shape[:2])
+
+        centers = centers.reshape(-1, 2) if ok_grid and centers is not None else None
 
         annotated = frame.copy()
         if centers is not None:
@@ -64,6 +68,7 @@ def test_camera_calibration():
     if frame_count == 0:
         pytest.skip("video has no frames")
 
+    cc.execute_calibration()
     result = cc.get_result()
     print(result)
     assert result is not None
