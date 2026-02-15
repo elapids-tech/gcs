@@ -91,11 +91,14 @@ app.add_middleware(
 
 manager = ConnectionManager()
 mavlink_client = MavlinkClient(host_ip="192.168.0.6")
-camera_calibration_running = False
+camera_0_calibration_running = False
+camera_1_calibration_running = False
 
 # 受信した最新フレーム（JPEGバイト列と受信時刻）
 latest_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
 frame_lock = asyncio.Lock()
+pending_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
+processing_frame = False
 
 # プレースホルダー画像（左右分割でJPEG保持）
 placeholder_left_jpeg: Optional[bytes] = None
@@ -147,40 +150,64 @@ def split_frame(img: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 
 async def _update_latest_frame(data: bytes, ts: float):
-    """最新フレームを更新し、初回はプレースホルダーのサイズも合わせる"""
+    """最新フレームを保持（古いものは破棄）"""
+    global pending_frame
+    async with frame_lock:
+        pending_frame = {"data": data, "ts": ts}
+
+
+async def _process_pending_frames():
+    """保持中の最新フレームだけを処理する"""
     global latest_frame, latest_split_frame, last_frame_size
     global placeholder_left_jpeg, placeholder_right_jpeg, placeholder_size
-    async with frame_lock:
-        latest_frame = {"data": data, "ts": ts}
-    if last_frame_size is None:
+    global pending_frame, processing_frame
+
+    while True:
+        async with frame_lock:
+            if processing_frame or pending_frame is None:
+                frame = None
+            else:
+                processing_frame = True
+                frame = pending_frame
+                pending_frame = None
+
+        if frame is None:
+            await asyncio.sleep(0.001)
+            continue
+
+        data = frame["data"]
+        ts = frame["ts"]
+
         try:
+            # TODO: ここに画像処理を追加（binarize / find_asymmetric_grid / add_grid_points など）
             arr = np.frombuffer(data, dtype=np.uint8)
             img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-            if img is not None:
-                h, w = img.shape[:2]
+            if img is None:
+                continue
+
+            h, w = img.shape[:2]
+            if last_frame_size is None:
                 last_frame_size = (w, h)
-                if (w, h) != placeholder_size:
-                    placeholder_size = (w, h)
-                    placeholder_img = build_placeholder_image(placeholder_size)
-                    left_img, right_img = split_frame(placeholder_img)
-                    placeholder_left_jpeg = encode_jpeg(left_img)
-                    placeholder_right_jpeg = encode_jpeg(right_img)
-                    print(f"[video] placeholder resized to {placeholder_size}")
+            if (w, h) != placeholder_size:
+                placeholder_size = (w, h)
+                placeholder_img = build_placeholder_image(placeholder_size)
+                left_img, right_img = split_frame(placeholder_img)
+                placeholder_left_jpeg = encode_jpeg(left_img)
+                placeholder_right_jpeg = encode_jpeg(right_img)
+                print(f"[video] placeholder resized to {placeholder_size}")
+
+            left_img, right_img = split_frame(img)
+            left_jpeg = encode_jpeg(left_img)
+            right_jpeg = encode_jpeg(right_img)
+
+            async with frame_lock:
+                latest_frame = {"data": data, "ts": ts}
+                latest_split_frame = {"left": left_jpeg, "right": right_jpeg, "ts": ts}
         except Exception:
             pass
-
-    try:
-        arr = np.frombuffer(data, dtype=np.uint8)
-        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-        if img is None:
-            return
-        left_img, right_img = split_frame(img)
-        left_jpeg = encode_jpeg(left_img)
-        right_jpeg = encode_jpeg(right_img)
-        async with frame_lock:
-            latest_split_frame = {"left": left_jpeg, "right": right_jpeg, "ts": ts}
-    except Exception:
-        pass
+        finally:
+            async with frame_lock:
+                processing_frame = False
 
 
 class UdpReceiverProtocol(asyncio.DatagramProtocol):
@@ -374,20 +401,47 @@ def send_enable_config_mode_signal():
 
 @app.post("/config-mode/camera-calibration/start")
 def start_camera_calibration(camera: int = 0):
-    print(f"[mock] camera calibration start: camera={camera}")
+    global camera_0_calibration_running, camera_1_calibration_running
+    if camera == 0:
+        if camera_1_calibration_running:
+            return JSONResponse(
+                status_code=409,
+                content={"status": "error", "message": "Camera 1 calibration is running."},
+            )
+        camera_0_calibration_running = True
+    elif camera == 1:
+        if camera_0_calibration_running:
+            return JSONResponse(
+                status_code=409,
+                content={"status": "error", "message": "Camera 0 calibration is running."},
+            )
+        camera_1_calibration_running = True
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": f"Invalid camera number: {camera}"},
+        )
     return {"status": "ok", "running": True, "camera": camera}
 
 
 @app.post("/config-mode/camera-calibration/stop")
-def stop_camera_calibration():
-    print("[mock] camera calibration stop")
-    return {"status": "ok", "running": False}
+def stop_camera_calibration(camera: int = 0):
+    global camera_0_calibration_running, camera_1_calibration_running
+    if camera == 0:
+        camera_0_calibration_running = False
+    elif camera == 1:
+        camera_1_calibration_running = False
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": f"Invalid camera number: {camera}"},
+        )
+    return {"status": "ok", "running": camera_0_calibration_running or camera_1_calibration_running}
 
 
 @app.get("/config-mode/camera-calibration/status")
 def camera_calibration_status():
-    print("[mock] camera calibration status")
-    return {"status": "ok", "running": True}
+    return {"status": "ok", "running": camera_0_calibration_running or camera_1_calibration_running}
 
 
 async def periodic_task():
@@ -500,6 +554,7 @@ async def startup_event():
         raise
 
     asyncio.create_task(periodic_task())
+    asyncio.create_task(_process_pending_frames())
     print("[startup] periodic_task started")
 
 
