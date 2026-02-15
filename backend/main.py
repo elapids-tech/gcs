@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect, WebSocketState
 
 from backend.mavlink_client import MavlinkClient
+from backend.camera_calibration import CameraCalibration
 
 try:
     from uvicorn.protocols.utils import ClientDisconnected
@@ -93,6 +94,8 @@ manager = ConnectionManager()
 mavlink_client = MavlinkClient(host_ip="192.168.0.6")
 camera_0_calibration_running = False
 camera_1_calibration_running = False
+cc_0 = CameraCalibration(cols=4, rows=11, col_pitch_mm=20.0, row_pitch_mm=None)
+cc_1 = CameraCalibration(cols=4, rows=11, col_pitch_mm=20.0, row_pitch_mm=None)
 
 # 受信した最新フレーム（JPEGバイト列と受信時刻）
 latest_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
@@ -180,11 +183,12 @@ async def _process_pending_frames():
 
         try:
             arr = np.frombuffer(data, dtype=np.uint8)
-            img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-            if img is None:
+            gray = cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
+            if gray is None:
                 continue
+            color = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
 
-            h, w = img.shape[:2]
+            h, w = gray.shape[:2]
             if last_frame_size is None:
                 last_frame_size = (w, h)
             if (w, h) != placeholder_size:
@@ -195,13 +199,28 @@ async def _process_pending_frames():
                 placeholder_right_jpeg = encode_jpeg(right_img)
                 print(f"[video] placeholder resized to {placeholder_size}")
 
-            left_img, right_img = split_frame(img)
+            left_img, right_img = split_frame(color)
+            left_gray, right_gray = split_frame(gray)
 
             # 分割後のフレームに対する画像処理はここで実行する
             if camera_0_calibration_running:
-                left_img = cv2.putText(left_img, "CALIBRATION MODE - CAMERA 0", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2, cv2.LINE_AA)
+                bw_left = cc_0.binarize(left_gray)
+                ok_left, centers_left = cc_0.find_asymmetric_grid(bw_left)
+                if ok_left and centers_left is not None:
+                    accepted = cc_0.add_grid_points(centers_left, image_shape=left_gray.shape[:2])
+                    left_img = cc_0.draw_detected_points(left_img, centers_left)
+                tile_counts = cc_0.get_tile_overlap_count()
+                if tile_counts is not None:
+                    left_img = cc_0.draw_overlay(left_img, tile_counts, alpha=0.5, max_count=10)
             if camera_1_calibration_running:
-                right_img = cv2.putText(right_img, "CALIBRATION MODE - CAMERA 1", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2, cv2.LINE_AA)
+                bw_right = cc_1.binarize(right_gray)
+                ok_right, centers_right = cc_1.find_asymmetric_grid(bw_right)
+                if ok_right and centers_right is not None:
+                    accepted = cc_1.add_grid_points(centers_right, image_shape=right_gray.shape[:2])
+                    right_img = cc_1.draw_detected_points(right_img, centers_right)
+                tile_counts = cc_1.get_tile_overlap_count()
+                if tile_counts is not None:
+                    right_img = cc_1.draw_overlay(right_img, tile_counts, alpha=0.5, max_count=10)
 
             left_jpeg = encode_jpeg(left_img)
             right_jpeg = encode_jpeg(right_img)
