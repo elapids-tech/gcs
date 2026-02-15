@@ -1,6 +1,7 @@
 import os
 
 import cv2
+import numpy as np
 import pytest
 
 from backend.camera_calibration import CameraCalibration
@@ -33,34 +34,24 @@ def test_camera_calibration():
         bw = cc.binarize(gray)
         ok_grid, centers = cc.find_asymmetric_grid(bw)
 
-        update_result = None
+        accepted = False
         if ok_grid and centers is not None:
-            update_result = cc.add_grid_points(centers, image_shape=gray.shape[:2])
+            accepted = cc.add_grid_points(centers, image_shape=gray.shape[:2])
 
-        centers = centers.reshape(-1, 2) if ok_grid and centers is not None else None
-
-        annotated = frame.copy()
-        if centers is not None:
-            for idx, (x, y) in enumerate(centers):
-                cx, cy = int(round(x)), int(round(y))
-                cv2.circle(annotated, (cx, cy), 4, (0, 255, 0), -1)
-                cv2.putText(
-                    annotated,
-                    str(idx),
-                    (cx + 5, cy - 5),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.4,
-                    (0, 255, 0),
-                    1,
-                    cv2.LINE_AA,
-                )
+        annotated = cc.draw_detected_points(frame, centers)
 
         frame_path = os.path.join(frames_dir, f"frame_{frame_count:05d}.png")
         cv2.imwrite(frame_path, annotated)
 
+        if accepted:
+            update_result = cc.get_tile_overlap_count()
+        else:
+            update_result = None
+
         if update_result is not None:
+            blended = cc.draw_overlay(annotated, update_result, alpha=0.5, max_count=10)
             overlay_path = os.path.join(overlay_dir, f"overlay_{frame_count:05d}.png")
-            cv2.imwrite(overlay_path, update_result)
+            cv2.imwrite(overlay_path, blended)
         
 
     cap.release()

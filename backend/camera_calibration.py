@@ -31,6 +31,9 @@ class CameraCalibration:
         self._tile_counts = None
         self._tile_grid = None
         self._tile_size = 50
+        self._overlap_history = []
+        self._overlap_history_set = set()
+        self._overlap_history_limit = 200
 
     def build_asym_points(self, cols, rows, col_pitch, row_pitch):
         objp = np.zeros((rows * cols, 3), np.float32)
@@ -69,12 +72,7 @@ class CameraCalibration:
                 return True, centers
         return False, None
 
-    def _update_overlay(self, image_shape, centers):
-        if image_shape is None:
-            raise ValueError("image_shape is required")
-        if centers is None:
-            return
-
+    def _ensure_tile_grid(self, image_shape):
         h, w = image_shape
         tile_size = self._tile_size
         grid_cols = (w + tile_size - 1) // tile_size
@@ -83,15 +81,27 @@ class CameraCalibration:
         if self._tile_counts is None or self._tile_grid != grid_shape:
             self._tile_counts = np.zeros(grid_shape, dtype=np.int32)
             self._tile_grid = grid_shape
+        return grid_shape
+
+    def _get_overlap_tiles(self, image_shape, centers):
+        if image_shape is None:
+            raise ValueError("image_shape is required")
+        if centers is None:
+            return set(), None
+
+        h, w = image_shape
+        grid_rows, grid_cols = self._ensure_tile_grid(image_shape)
+        tile_size = self._tile_size
 
         outer = self.get_outer_points(centers)
         if not outer:
-            return
+            return set(), (grid_rows, grid_cols)
 
         poly = np.asarray(outer, dtype=np.int32).reshape(-1, 1, 2)
         mask = np.zeros((h, w), dtype=np.uint8)
         cv2.fillPoly(mask, [poly], 1)
 
+        tiles = set()
         for row in range(grid_rows):
             y0 = row * tile_size
             y1 = min((row + 1) * tile_size, h)
@@ -99,7 +109,19 @@ class CameraCalibration:
                 x0 = col * tile_size
                 x1 = min((col + 1) * tile_size, w)
                 if np.any(mask[y0:y1, x0:x1]):
-                    self._tile_counts[row, col] += 1
+                    tiles.add((row, col))
+
+        return tiles, (grid_rows, grid_cols)
+
+    def _update_overlay(self, image_shape, tiles):
+        if image_shape is None:
+            raise ValueError("image_shape is required")
+        if not tiles:
+            return
+
+        self._ensure_tile_grid(image_shape)
+        for row, col in tiles:
+            self._tile_counts[row, col] += 1
 
     def create_overlay(self):
         if self._tile_counts is None:
@@ -120,9 +142,77 @@ class CameraCalibration:
 
         return overlay
 
-    def add_grid_points(self, grid_points, image_shape=None):
-        if grid_points is None:
+    def draw_detected_points(self, frame, centers, color=(0, 255, 0)):
+        if frame is None:
+            raise ValueError("frame is required")
+        if centers is None:
+            return frame
+
+        pts = np.asarray(centers, dtype=np.float32)
+        if pts.ndim == 3 and pts.shape[1:] == (1, 2):
+            pts = pts.reshape(-1, 2)
+        elif pts.ndim != 2 or pts.shape[1] != 2:
+            raise ValueError("centers must be a Nx2 array or Nx1x2 array")
+
+        annotated = frame.copy()
+        for idx, (x, y) in enumerate(pts):
+            cx, cy = int(round(x)), int(round(y))
+            cv2.circle(annotated, (cx, cy), 4, color, -1)
+            cv2.putText(
+                annotated,
+                str(idx),
+                (cx + 5, cy - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                color,
+                1,
+                cv2.LINE_AA,
+            )
+
+        return annotated
+
+    def draw_overlay(self, frame, tile_counts, alpha=0.5, max_count=10):
+        if frame is None:
+            raise ValueError("frame is required")
+        if tile_counts is None:
+            return frame
+
+        counts = np.asarray(tile_counts)
+        if counts.ndim != 2:
+            raise ValueError("tile_counts must be a 2D array")
+
+        grid_rows, grid_cols = counts.shape
+        overlay = np.zeros((grid_rows, grid_cols, 3), dtype=np.uint8)
+        for row in range(grid_rows):
+            for col in range(grid_cols):
+                count = int(counts[row, col])
+                t = min(count, max_count) / float(max_count)
+                value = int(round((1.0 - t) * 255.0))
+                color = cv2.applyColorMap(
+                    np.array([[value]], dtype=np.uint8),
+                    cv2.COLORMAP_JET,
+                )[0, 0]
+                overlay[row, col] = color
+
+        overlay_up = cv2.resize(
+            overlay,
+            (frame.shape[1], frame.shape[0]),
+            interpolation=cv2.INTER_NEAREST,
+        )
+        return cv2.addWeighted(frame, 1.0 - alpha, overlay_up, alpha, 0)
+
+    def get_tile_overlap_count(self):
+        if self._tile_counts is None:
             return None
+        return self._tile_counts.copy()
+
+    def add_grid_points(self, grid_points, image_shape=None):
+        """Add detected grid points.
+
+        Returns True when accepted; otherwise returns False.
+        """
+        if grid_points is None:
+            return False
 
         pts = np.asarray(grid_points, dtype=np.float32)
         if pts.ndim == 2 and pts.shape[1] == 2:
@@ -148,6 +238,19 @@ class CameraCalibration:
 
         h, w = image_shape
         self._last_size = (w, h)
+        tiles, _ = self._get_overlap_tiles(image_shape, centers)
+        if not tiles:
+            return False
+
+        tiles_key = frozenset(tiles)
+        if tiles_key in self._overlap_history_set:
+            return False
+
+        self._overlap_history.append(tiles_key)
+        self._overlap_history_set.add(tiles_key)
+        if len(self._overlap_history) > self._overlap_history_limit:
+            oldest = self._overlap_history.pop(0)
+            self._overlap_history_set.discard(oldest)
         self._objpoints.append(self._objp)
         self._imgpoints.append(centers)
 
@@ -155,8 +258,9 @@ class CameraCalibration:
             self._objpoints = self._objpoints[: self.max_samples]
             self._imgpoints = self._imgpoints[: self.max_samples]
 
-        self._update_overlay(image_shape, centers)
-        return self.create_overlay()
+        self._update_overlay(image_shape, tiles)
+
+        return True
 
     def execute_calibration(self):
         used = len(self._objpoints)
