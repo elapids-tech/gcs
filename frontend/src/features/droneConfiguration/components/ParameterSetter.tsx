@@ -70,6 +70,7 @@ const ParameterSetter: React.FC = () => {
 
   const [calibrationRunning, setCalibrationRunning] = useState<boolean>(false);
   const [calibrationCamera, setCalibrationCamera] = useState<string>("0");
+  const [registeredCount, setRegisteredCount] = useState<number>(0);
 
   const [dotAreaMin, setDotAreaMin] = useState<number>(DOT_AREA_MIN_DEFAULT);
   const [dotAreaMax, setDotAreaMax] = useState<number>(DOT_AREA_MAX_DEFAULT);
@@ -117,6 +118,11 @@ const ParameterSetter: React.FC = () => {
 
   const stopCalibration = async () => {
     await fetch(`${API_BASE_URL}/config-mode/camera-calibration/stop`, { method: "POST" });
+  };
+
+  const executeCalibration = async () => {
+    // TODO: backendのexecute APIに合わせて更新
+    console.warn("execute calibration not wired yet");
   };
 
   const getCalibrationStatus = async () => {
@@ -443,15 +449,27 @@ const ParameterSetter: React.FC = () => {
 
         {cameraCalibrationOpen && (
           <div style={sectionBodyStyle}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "140px 1fr",
+                rowGap: 10,
+                columnGap: 12,
+                alignItems: "center",
+              }}
+            >
+              <div style={{ fontFamily: "monospace", fontSize: 12 }}>Camera Select</div>
               <select
                 value={calibrationCamera}
                 onChange={(e) => setCalibrationCamera(e.target.value)}
                 disabled={calibrationRunning}
+                style={{ width: 160 }}
               >
                 <option value="0">camera 0</option>
                 <option value="1">camera 1</option>
               </select>
+
+              <div style={{ fontFamily: "monospace", fontSize: 12 }}>Grid Detection</div>
               <button
                 type="button"
                 onClick={() => {
@@ -463,8 +481,17 @@ const ParameterSetter: React.FC = () => {
                     setCalibrationRunning(true);
                   }
                 }}
+                style={{ width: 120 }}
               >
                 {calibrationRunning ? "Stop" : "Start"}
+              </button>
+
+              <div style={{ fontFamily: "monospace", fontSize: 12 }}>Registered Frames</div>
+              <div style={{ fontFamily: "monospace" }}>{registeredCount}</div>
+
+              <div style={{ fontFamily: "monospace", fontSize: 12 }}>Calibration</div>
+              <button type="button" onClick={executeCalibration} style={{ width: 120 }}>
+                Execute
               </button>
             </div>
           </div>
