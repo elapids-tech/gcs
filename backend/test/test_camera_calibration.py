@@ -45,6 +45,7 @@ def test_camera_calibration():
 
         if accepted:
             update_result = cc.get_tile_overlap_count()
+            print(f"registered_frames={cc.get_registered_frame_count()}")
         else:
             update_result = None
 

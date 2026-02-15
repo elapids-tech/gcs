@@ -206,6 +206,9 @@ class CameraCalibration:
             return None
         return self._tile_counts.copy()
 
+    def get_registered_frame_count(self):
+        return len(self._objpoints)
+
     def add_grid_points(self, grid_points, image_shape=None):
         """Add detected grid points.
 
