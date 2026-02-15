@@ -179,7 +179,6 @@ async def _process_pending_frames():
         ts = frame["ts"]
 
         try:
-            # TODO: ここに画像処理を追加（binarize / find_asymmetric_grid / add_grid_points など）
             arr = np.frombuffer(data, dtype=np.uint8)
             img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
             if img is None:
@@ -197,6 +196,13 @@ async def _process_pending_frames():
                 print(f"[video] placeholder resized to {placeholder_size}")
 
             left_img, right_img = split_frame(img)
+
+            # 分割後のフレームに対する画像処理はここで実行する
+            if camera_0_calibration_running:
+                left_img = cv2.putText(left_img, "CALIBRATION MODE - CAMERA 0", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2, cv2.LINE_AA)
+            if camera_1_calibration_running:
+                right_img = cv2.putText(right_img, "CALIBRATION MODE - CAMERA 1", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2, cv2.LINE_AA)
+
             left_jpeg = encode_jpeg(left_img)
             right_jpeg = encode_jpeg(right_img)
 
@@ -409,6 +415,7 @@ def start_camera_calibration(camera: int = 0):
                 content={"status": "error", "message": "Camera 1 calibration is running."},
             )
         camera_0_calibration_running = True
+        camera_1_calibration_running = False
     elif camera == 1:
         if camera_0_calibration_running:
             return JSONResponse(
@@ -416,6 +423,7 @@ def start_camera_calibration(camera: int = 0):
                 content={"status": "error", "message": "Camera 0 calibration is running."},
             )
         camera_1_calibration_running = True
+        camera_0_calibration_running = False
     else:
         return JSONResponse(
             status_code=400,
@@ -427,15 +435,8 @@ def start_camera_calibration(camera: int = 0):
 @app.post("/config-mode/camera-calibration/stop")
 def stop_camera_calibration(camera: int = 0):
     global camera_0_calibration_running, camera_1_calibration_running
-    if camera == 0:
-        camera_0_calibration_running = False
-    elif camera == 1:
-        camera_1_calibration_running = False
-    else:
-        return JSONResponse(
-            status_code=400,
-            content={"status": "error", "message": f"Invalid camera number: {camera}"},
-        )
+    camera_0_calibration_running = False
+    camera_1_calibration_running = False
     return {"status": "ok", "running": camera_0_calibration_running or camera_1_calibration_running}
 
 
