@@ -70,6 +70,9 @@ const ParameterSetter: React.FC = () => {
 
   const [calibrationCamera, setCalibrationCamera] = useState<string>("0");
   const [calibrationRunningByCamera, setCalibrationRunningByCamera] = useState<Record<number, boolean>>({ 0: false, 1: false });
+  const [executeRunningByCamera, setExecuteRunningByCamera] = useState<Record<number, boolean>>({ 0: false, 1: false });
+  const [executeResultByCamera, setExecuteResultByCamera] = useState<Record<number, boolean>>({ 0: false, 1: false });
+  const [executeErrorByCamera, setExecuteErrorByCamera] = useState<Record<number, string | null>>({ 0: null, 1: null });
   const [registeredCounts, setRegisteredCounts] = useState<Record<number, number>>({ 0: 0, 1: 0 });
   const calibrationRunningRef = useRef<Record<number, boolean>>({ 0: false, 1: false });
 
@@ -99,6 +102,9 @@ const ParameterSetter: React.FC = () => {
 
   const selectedCamera = Number(calibrationCamera);
   const calibrationRunning = calibrationRunningByCamera[selectedCamera] ?? false;
+  const executeRunning = executeRunningByCamera[selectedCamera] ?? false;
+  const executeResultAvailable = executeResultByCamera[selectedCamera] ?? false;
+  const executeError = executeErrorByCamera[selectedCamera] ?? null;
   const registeredCount = registeredCounts[selectedCamera] ?? 0;
 
   useEffect(() => {
@@ -162,10 +168,19 @@ const ParameterSetter: React.FC = () => {
   };
 
   const executeCalibration = async () => {
-    await fetch(
+    const res = await fetch(
       `${API_BASE_URL}/config-mode/camera-calibration/execute-calibration?camera=${encodeURIComponent(calibrationCamera)}`,
       { method: "POST" }
     );
+    if (!res.ok) {
+      const message = await res.text();
+      console.warn("execute-calibration failed:", message);
+      setExecuteRunningByCamera((prev) => ({ ...prev, [selectedCamera]: false }));
+      setExecuteErrorByCamera((prev) => ({ ...prev, [selectedCamera]: message }));
+      return;
+    }
+    setExecuteRunningByCamera((prev) => ({ ...prev, [selectedCamera]: true }));
+    setExecuteErrorByCamera((prev) => ({ ...prev, [selectedCamera]: null }));
   };
 
   const downloadCalibration = async () => {
@@ -211,9 +226,43 @@ const ParameterSetter: React.FC = () => {
     return res.json();
   };
 
+  const getExecuteStatus = async (cameraId: number) => {
+    const res = await fetch(
+      `${API_BASE_URL}/config-mode/camera-calibration/execute-status?camera=${encodeURIComponent(String(cameraId))}`
+    );
+    if (!res.ok) {
+      throw new Error("Failed to fetch execute status");
+    }
+    return res.json();
+  };
+
   useEffect(() => {
     calibrationRunningRef.current = calibrationRunningByCamera;
   }, [calibrationRunningByCamera]);
+
+  useEffect(() => {
+    const sync = async () => {
+      try {
+        const results = await Promise.all([getExecuteStatus(0), getExecuteStatus(1)]);
+        setExecuteRunningByCamera({
+          0: Boolean(results[0]?.running),
+          1: Boolean(results[1]?.running),
+        });
+        setExecuteResultByCamera({
+          0: Boolean(results[0]?.result_available),
+          1: Boolean(results[1]?.result_available),
+        });
+        setExecuteErrorByCamera({
+          0: results[0]?.last_error ? String(results[0].last_error) : null,
+          1: results[1]?.last_error ? String(results[1].last_error) : null,
+        });
+      } catch (err) {
+        console.warn("execute status 取得失敗:", err);
+      }
+    };
+
+    sync();
+  }, []);
 
   useEffect(() => {
     const anyRunning = Object.values(calibrationRunningByCamera).some(Boolean);
@@ -229,6 +278,36 @@ const ParameterSetter: React.FC = () => {
       window.clearInterval(timer);
     };
   }, [calibrationRunningByCamera]);
+
+  useEffect(() => {
+    const anyExecuting = Object.values(executeRunningByCamera).some(Boolean);
+    if (!anyExecuting) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      Promise.all([getExecuteStatus(0), getExecuteStatus(1)])
+        .then((results) => {
+          setExecuteRunningByCamera({
+            0: Boolean(results[0]?.running),
+            1: Boolean(results[1]?.running),
+          });
+          setExecuteResultByCamera({
+            0: Boolean(results[0]?.result_available),
+            1: Boolean(results[1]?.result_available),
+          });
+          setExecuteErrorByCamera({
+            0: results[0]?.last_error ? String(results[0].last_error) : null,
+            1: results[1]?.last_error ? String(results[1].last_error) : null,
+          });
+        })
+        .catch((err) => console.warn("execute status 取得失敗:", err));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [executeRunningByCamera]);
 
   useEffect(() => {
     return () => {
@@ -579,9 +658,19 @@ const ParameterSetter: React.FC = () => {
 
               <div style={{ fontFamily: "monospace", fontSize: 12 }}>Calibration</div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" onClick={executeCalibration} style={{ width: 120 }}>
-                  Execute
+                <button
+                  type="button"
+                  onClick={executeCalibration}
+                  style={{ width: 120 }}
+                  disabled={executeRunning}
+                >
+                  {executeRunning ? "Executing..." : "Execute"}
                 </button>
+              </div>
+              <div style={{ fontFamily: "monospace", fontSize: 12 }}>Execute Status</div>
+              <div style={{ fontFamily: "monospace" }}>
+                {executeRunning ? "running" : executeResultAvailable ? "ready" : "no result"}
+                {executeError ? ` (error: ${executeError})` : ""}
               </div>
             </div>
 
@@ -595,6 +684,7 @@ const ParameterSetter: React.FC = () => {
                   })
                 }
                 style={{ width: 160 }}
+                disabled={!executeResultAvailable || executeRunning}
               >
                 Download
               </button>

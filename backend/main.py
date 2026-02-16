@@ -100,6 +100,10 @@ cc_1 = CameraCalibration(cols=4, rows=11, col_pitch_mm=20.0, row_pitch_mm=None)
 
 camera_calibration_counts = {0: 0, 1: 0}
 last_broadcasted_calibration = {0: {"count": -1, "running": None}, 1: {"count": -1, "running": None}}
+calibration_execute_status = {
+    0: {"running": False, "started_at": None, "last_error": None, "result_available": False},
+    1: {"running": False, "started_at": None, "last_error": None, "result_available": False},
+}
 
 # 受信した最新フレーム（JPEGバイト列と受信時刻）
 latest_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
@@ -453,7 +457,7 @@ def send_enable_config_mode_signal():
 
 
 @app.post("/config-mode/camera-calibration/start")
-def start_camera_calibration(camera: int = 0):
+async def start_camera_calibration(camera: int = 0):
     global camera_0_allow_grid_pts_registration, camera_1_allow_grid_pts_registration
     if camera == 0:
         if camera_1_allow_grid_pts_registration:
@@ -477,17 +481,17 @@ def start_camera_calibration(camera: int = 0):
             content={"status": "error", "message": f"Invalid camera number: {camera}"},
         )
     for cam in (0, 1):
-        asyncio.create_task(_broadcast_calibration_update(cam))
+        await _broadcast_calibration_update(cam)
     return {"status": "ok", "running": True, "camera": camera}
 
 
 @app.post("/config-mode/camera-calibration/stop")
-def stop_camera_calibration(camera: int = 0):
+async def stop_camera_calibration(camera: int = 0):
     global camera_0_allow_grid_pts_registration, camera_1_allow_grid_pts_registration
     camera_0_allow_grid_pts_registration = False
     camera_1_allow_grid_pts_registration = False
     for cam in (0, 1):
-        asyncio.create_task(_broadcast_calibration_update(cam))
+        await _broadcast_calibration_update(cam)
     return {"status": "ok", "running": camera_0_allow_grid_pts_registration or camera_1_allow_grid_pts_registration}
 
 
@@ -497,14 +501,77 @@ def camera_calibration_status():
 
 
 @app.post("/config-mode/camera-calibration/execute-calibration")
-def execute_camera_calibration(camera: int = 0):
+async def execute_camera_calibration(camera: int = 0):
     global camera_0_allow_grid_pts_registration, camera_1_allow_grid_pts_registration
+
+    if camera not in (0, 1):
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": f"Invalid camera number: {camera}"},
+        )
+
+    status = calibration_execute_status[camera]
+    if status["running"]:
+        return JSONResponse(
+            status_code=409,
+            content={"status": "error", "message": "Calibration is already running."},
+        )
+
     if camera == 0:
         camera_0_allow_grid_pts_registration = False
-        cc_0.execute_calibration()
-    elif camera == 1:
+    else:
         camera_1_allow_grid_pts_registration = False
-        cc_1.execute_calibration()
+
+    status["running"] = True
+    status["started_at"] = time.time()
+    status["last_error"] = None
+    status["result_available"] = False
+
+    async def _run_calibration():
+        try:
+            if camera == 0:
+                performed = await asyncio.to_thread(cc_0.execute_calibration)
+                result = cc_0.get_result()
+            else:
+                performed = await asyncio.to_thread(cc_1.execute_calibration)
+                result = cc_1.get_result()
+            status["result_available"] = result is not None
+            if not performed and result is not None:
+                status["last_error"] = str(result.get("reason"))
+        except Exception as e:
+            status["last_error"] = f"{type(e).__name__}: {e}"
+            traceback.print_exc()
+        finally:
+            status["running"] = False
+
+    asyncio.create_task(_run_calibration())
+    return {"status": "ok", "camera": camera, "running": True}
+
+
+@app.get("/config-mode/camera-calibration/execute-status")
+def get_execute_calibration_status(camera: int = 0):
+    if camera not in (0, 1):
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": f"Invalid camera number: {camera}"},
+        )
+
+    status = calibration_execute_status[camera]
+    started_at = status["started_at"]
+    if camera == 0:
+        status["result_available"] = cc_0.get_result() is not None
+    else:
+        status["result_available"] = cc_1.get_result() is not None
+    elapsed = time.time() - started_at if started_at else None
+    return {
+        "status": "ok",
+        "camera": camera,
+        "running": status["running"],
+        "started_at": started_at,
+        "elapsed_sec": elapsed,
+        "last_error": status["last_error"],
+        "result_available": status["result_available"],
+    }
 
 
 @app.post("/config-mode/camera-calibration/save-to-drone")
@@ -525,6 +592,11 @@ def save_calibration_to_drone(camera: int = 0):
 
 @app.get("/config-mode/camera-calibration/download")
 def download_camera_calibration(camera: int = 0):
+    if calibration_execute_status.get(camera, {}).get("running"):
+        return JSONResponse(
+            status_code=409,
+            content={"status": "error", "message": "Calibration is running."},
+        )
     if camera == 0:
         result = cc_0.get_result()
     elif camera == 1:
