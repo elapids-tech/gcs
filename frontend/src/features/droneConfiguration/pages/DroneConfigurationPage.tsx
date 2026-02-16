@@ -62,10 +62,17 @@ const DroneConfigurationPage: React.FC = () => {
   }, [isDragging, minLeft, minRight]);
 
   return (
-    <div style={{ padding: "16px" }}>
+    <div style={{ padding: "16px", height: "100vh", boxSizing: "border-box", overflow: "hidden" }}>
       <h2>Drone Configuration</h2>
-      <div ref={containerRef} style={{ display: "flex", gap: 0 }}>
-        <div style={{ width: leftWidth, minWidth: minLeft, marginRight: splitterGap }}>
+      <div ref={containerRef} style={{ display: "flex", gap: 0, height: "calc(100vh - 72px)" }}>
+        <div
+          style={{
+            width: leftWidth,
+            minWidth: minLeft,
+            marginRight: splitterGap,
+            overflowY: "auto",
+          }}
+        >
           <CameraFrameViewer />
         </div>
         <div
@@ -86,7 +93,14 @@ const DroneConfigurationPage: React.FC = () => {
               : "linear-gradient(90deg, transparent 0, transparent 1px, #d1d5db 1px, #d1d5db 2px, transparent 2px)",
           }}
         />
-        <div style={{ flex: 1, minWidth: minRight, marginLeft: splitterGap }}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: minRight,
+            marginLeft: splitterGap,
+            overflowY: "auto",
+          }}
+        >
           <ParameterSetter />
         </div>
       </div>
