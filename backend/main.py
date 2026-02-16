@@ -92,8 +92,8 @@ app.add_middleware(
 
 manager = ConnectionManager()
 mavlink_client = MavlinkClient(host_ip="192.168.0.6")
-camera_0_calibration_running = False
-camera_1_calibration_running = False
+camera_0_allow_grid_pts_registration = False
+camera_1_allow_grid_pts_registration = False
 cc_0 = CameraCalibration(cols=4, rows=11, col_pitch_mm=20.0, row_pitch_mm=None)
 cc_1 = CameraCalibration(cols=4, rows=11, col_pitch_mm=20.0, row_pitch_mm=None)
 
@@ -157,7 +157,7 @@ def split_frame(img: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 async def _broadcast_calibration_update(camera: int):
     count = camera_calibration_counts.get(camera, 0)
-    running = camera_0_calibration_running if camera == 0 else camera_1_calibration_running
+    running = camera_0_allow_grid_pts_registration if camera == 0 else camera_1_allow_grid_pts_registration
     last = last_broadcasted_calibration.get(camera)
     if last and last["count"] == count and last["running"] == running:
         return
@@ -224,7 +224,7 @@ async def _process_pending_frames():
             left_gray, right_gray = split_frame(gray)
 
             # 分割後のフレームに対する画像処理はここで実行する
-            if camera_0_calibration_running:
+            if camera_0_allow_grid_pts_registration:
                 bw_left = cc_0.binarize(left_gray)
                 centers_left = cc_0.find_asymmetric_grid(bw_left)
                 if centers_left is not None:
@@ -236,7 +236,7 @@ async def _process_pending_frames():
                 tile_counts = cc_0.get_tile_overlap_count()
                 if tile_counts is not None:
                     left_img = cc_0.draw_overlay(left_img, tile_counts, alpha=0.5, max_count=10)
-            if camera_1_calibration_running:
+            if camera_1_allow_grid_pts_registration:
                 bw_right = cc_1.binarize(right_gray)
                 centers_right = cc_1.find_asymmetric_grid(bw_right)
                 if centers_right is not None:
@@ -453,23 +453,23 @@ def send_enable_config_mode_signal():
 
 @app.post("/config-mode/camera-calibration/start")
 def start_camera_calibration(camera: int = 0):
-    global camera_0_calibration_running, camera_1_calibration_running
+    global camera_0_allow_grid_pts_registration, camera_1_allow_grid_pts_registration
     if camera == 0:
-        if camera_1_calibration_running:
+        if camera_1_allow_grid_pts_registration:
             return JSONResponse(
                 status_code=409,
                 content={"status": "error", "message": "Camera 1 calibration is running."},
             )
-        camera_0_calibration_running = True
-        camera_1_calibration_running = False
+        camera_0_allow_grid_pts_registration = True
+        camera_1_allow_grid_pts_registration = False
     elif camera == 1:
-        if camera_0_calibration_running:
+        if camera_0_allow_grid_pts_registration:
             return JSONResponse(
                 status_code=409,
                 content={"status": "error", "message": "Camera 0 calibration is running."},
             )
-        camera_1_calibration_running = True
-        camera_0_calibration_running = False
+        camera_1_allow_grid_pts_registration = True
+        camera_0_allow_grid_pts_registration = False
     else:
         return JSONResponse(
             status_code=400,
@@ -482,17 +482,17 @@ def start_camera_calibration(camera: int = 0):
 
 @app.post("/config-mode/camera-calibration/stop")
 def stop_camera_calibration(camera: int = 0):
-    global camera_0_calibration_running, camera_1_calibration_running
-    camera_0_calibration_running = False
-    camera_1_calibration_running = False
+    global camera_0_allow_grid_pts_registration, camera_1_allow_grid_pts_registration
+    camera_0_allow_grid_pts_registration = False
+    camera_1_allow_grid_pts_registration = False
     for cam in (0, 1):
         asyncio.create_task(_broadcast_calibration_update(cam))
-    return {"status": "ok", "running": camera_0_calibration_running or camera_1_calibration_running}
+    return {"status": "ok", "running": camera_0_allow_grid_pts_registration or camera_1_allow_grid_pts_registration}
 
 
 @app.get("/config-mode/camera-calibration/status")
 def camera_calibration_status():
-    return {"status": "ok", "running": camera_0_calibration_running or camera_1_calibration_running}
+    return {"status": "ok", "running": camera_0_allow_grid_pts_registration or camera_1_allow_grid_pts_registration}
 
 
 async def periodic_task():
