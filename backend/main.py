@@ -97,6 +97,9 @@ camera_1_calibration_running = False
 cc_0 = CameraCalibration(cols=4, rows=11, col_pitch_mm=20.0, row_pitch_mm=None)
 cc_1 = CameraCalibration(cols=4, rows=11, col_pitch_mm=20.0, row_pitch_mm=None)
 
+camera_calibration_counts = {0: 0, 1: 0}
+last_broadcasted_calibration = {0: {"count": -1, "running": None}, 1: {"count": -1, "running": None}}
+
 # 受信した最新フレーム（JPEGバイト列と受信時刻）
 latest_frame: Optional[dict] = None  # {"data": bytes, "ts": float}
 frame_lock = asyncio.Lock()
@@ -152,6 +155,24 @@ def split_frame(img: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return left, right
 
 
+async def _broadcast_calibration_update(camera: int):
+    count = camera_calibration_counts.get(camera, 0)
+    running = camera_0_calibration_running if camera == 0 else camera_1_calibration_running
+    last = last_broadcasted_calibration.get(camera)
+    if last and last["count"] == count and last["running"] == running:
+        return
+    last_broadcasted_calibration[camera] = {"count": count, "running": running}
+    payload = {
+        "key": "cameraCalibrationUpdate",
+        "value": {
+            "camera": camera,
+            "registeredCount": count,
+            "running": running,
+        },
+    }
+    await manager.broadcast(json.dumps(payload))
+
+
 async def _update_latest_frame(data: bytes, ts: float):
     """最新フレームを保持（古いものは破棄）"""
     global pending_frame
@@ -205,18 +226,24 @@ async def _process_pending_frames():
             # 分割後のフレームに対する画像処理はここで実行する
             if camera_0_calibration_running:
                 bw_left = cc_0.binarize(left_gray)
-                ok_left, centers_left = cc_0.find_asymmetric_grid(bw_left)
-                if ok_left and centers_left is not None:
+                centers_left = cc_0.find_asymmetric_grid(bw_left)
+                if centers_left is not None:
                     accepted = cc_0.add_grid_points(centers_left, image_shape=left_gray.shape[:2])
+                    if accepted:
+                        camera_calibration_counts[0] = cc_0.get_registered_frame_count()
+                        await _broadcast_calibration_update(0)
                     left_img = cc_0.draw_detected_points(left_img, centers_left)
                 tile_counts = cc_0.get_tile_overlap_count()
                 if tile_counts is not None:
                     left_img = cc_0.draw_overlay(left_img, tile_counts, alpha=0.5, max_count=10)
             if camera_1_calibration_running:
                 bw_right = cc_1.binarize(right_gray)
-                ok_right, centers_right = cc_1.find_asymmetric_grid(bw_right)
-                if ok_right and centers_right is not None:
+                centers_right = cc_1.find_asymmetric_grid(bw_right)
+                if centers_right is not None:
                     accepted = cc_1.add_grid_points(centers_right, image_shape=right_gray.shape[:2])
+                    if accepted:
+                        camera_calibration_counts[1] = cc_1.get_registered_frame_count()
+                        await _broadcast_calibration_update(1)
                     right_img = cc_1.draw_detected_points(right_img, centers_right)
                 tile_counts = cc_1.get_tile_overlap_count()
                 if tile_counts is not None:
@@ -448,6 +475,8 @@ def start_camera_calibration(camera: int = 0):
             status_code=400,
             content={"status": "error", "message": f"Invalid camera number: {camera}"},
         )
+    for cam in (0, 1):
+        asyncio.create_task(_broadcast_calibration_update(cam))
     return {"status": "ok", "running": True, "camera": camera}
 
 
@@ -456,6 +485,8 @@ def stop_camera_calibration(camera: int = 0):
     global camera_0_calibration_running, camera_1_calibration_running
     camera_0_calibration_running = False
     camera_1_calibration_running = False
+    for cam in (0, 1):
+        asyncio.create_task(_broadcast_calibration_update(cam))
     return {"status": "ok", "running": camera_0_calibration_running or camera_1_calibration_running}
 
 

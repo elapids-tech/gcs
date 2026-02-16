@@ -68,9 +68,9 @@ const ParameterSetter: React.FC = () => {
   const [landmarkSettingsOpen, setLandmarkSettingsOpen] = useState<boolean>(false);
   const [hoveredSection, setHoveredSection] = useState<"threshold" | "camera" | "calibration" | "landmark" | null>(null);
 
-  const [calibrationRunning, setCalibrationRunning] = useState<boolean>(false);
   const [calibrationCamera, setCalibrationCamera] = useState<string>("0");
-  const [registeredCount, setRegisteredCount] = useState<number>(0);
+  const [calibrationRunningByCamera, setCalibrationRunningByCamera] = useState<Record<number, boolean>>({ 0: false, 1: false });
+  const [registeredCounts, setRegisteredCounts] = useState<Record<number, number>>({ 0: 0, 1: 0 });
 
   const [dotAreaMin, setDotAreaMin] = useState<number>(DOT_AREA_MIN_DEFAULT);
   const [dotAreaMax, setDotAreaMax] = useState<number>(DOT_AREA_MAX_DEFAULT);
@@ -96,6 +96,10 @@ const ParameterSetter: React.FC = () => {
   const inFlightRef = useRef<Record<string, boolean | undefined>>({});
   const pendingRef = useRef<Record<string, number | undefined>>({});
 
+  const selectedCamera = Number(calibrationCamera);
+  const calibrationRunning = calibrationRunningByCamera[selectedCamera] ?? false;
+  const registeredCount = registeredCounts[selectedCamera] ?? 0;
+
   useEffect(() => {
     fetch(`${API_BASE_URL}/config-mode/get-bin-threshold`)
       .then((res) => {
@@ -108,6 +112,42 @@ const ParameterSetter: React.FC = () => {
         }
       })
       .catch((e) => console.warn("しきい値の取得失敗:", e));
+  }, []);
+
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8003/ws");
+
+    ws.onmessage = (event) => {
+      if (typeof event.data !== "string") {
+        return;
+      }
+
+      try {
+        const data = JSON.parse(event.data);
+        if (data?.key !== "cameraCalibrationUpdate" || !data.value) {
+          return;
+        }
+
+        const cameraId = Number(data.value.camera);
+        const count = Number(data.value.registeredCount);
+        const running = Boolean(data.value.running);
+
+        if (!Number.isNaN(cameraId) && !Number.isNaN(count)) {
+          setRegisteredCounts((prev) => ({ ...prev, [cameraId]: count }));
+          setCalibrationRunningByCamera((prev) => ({ ...prev, [cameraId]: running }));
+        }
+      } catch (err) {
+        console.warn("calibration websocket parse error:", err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.warn("calibration websocket error:", err);
+    };
+
+    return () => {
+      ws.close();
+    };
   }, []);
 
   const startCalibration = async (cameraId: string) => {
@@ -134,7 +174,8 @@ const ParameterSetter: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!calibrationRunning) {
+    const anyRunning = Object.values(calibrationRunningByCamera).some(Boolean);
+    if (!anyRunning) {
       return undefined;
     }
 
@@ -145,15 +186,16 @@ const ParameterSetter: React.FC = () => {
     return () => {
       window.clearInterval(timer);
     };
-  }, [calibrationRunning]);
+  }, [calibrationRunningByCamera]);
 
   useEffect(() => {
     return () => {
-      if (calibrationRunning) {
+      const anyRunning = Object.values(calibrationRunningByCamera).some(Boolean);
+      if (anyRunning) {
         stopCalibration().catch((err) => console.warn("calibration stop 送信失敗:", err));
       }
     };
-  }, [calibrationRunning]);
+  }, [calibrationRunningByCamera]);
 
   const postBinThreshold = async (value: number) => {
     await fetch(`${API_BASE_URL}/config-mode/set-bin-threshold?threshold=${value}`, {
@@ -475,10 +517,14 @@ const ParameterSetter: React.FC = () => {
                 onClick={() => {
                   if (calibrationRunning) {
                     stopCalibration().catch((err) => console.warn("calibration stop 送信失敗:", err));
-                    setCalibrationRunning(false);
+                    setCalibrationRunningByCamera({ 0: false, 1: false });
                   } else {
                     startCalibration(calibrationCamera).catch((err) => console.warn("calibration start 送信失敗:", err));
-                    setCalibrationRunning(true);
+                    setCalibrationRunningByCamera((prev) => ({
+                      ...prev,
+                      0: selectedCamera === 0,
+                      1: selectedCamera === 1,
+                    }));
                   }
                 }}
                 style={{ width: 120 }}
@@ -486,7 +532,7 @@ const ParameterSetter: React.FC = () => {
                 {calibrationRunning ? "Stop" : "Start"}
               </button>
 
-              <div style={{ fontFamily: "monospace", fontSize: 12 }}>Registered Frames</div>
+              <div style={{ fontFamily: "monospace", fontSize: 12 }}>Registered Count</div>
               <div style={{ fontFamily: "monospace" }}>{registeredCount}</div>
 
               <div style={{ fontFamily: "monospace", fontSize: 12 }}>Calibration</div>
