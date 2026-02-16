@@ -16,7 +16,13 @@ def test_camera_calibration():
     if not cap.isOpened():
         pytest.skip(f"open fail: {video_path}")
 
-    cc = CameraCalibration(cols=4, rows=11, col_pitch_mm=20.0, row_pitch_mm=None)
+    cc = CameraCalibration(
+        cols=4,
+        rows=11,
+        col_pitch_mm=20.0,
+        row_pitch_mm=None,
+        lens_type="fisheye",
+    )
 
     output_dir = os.environ.get("CALIBRATION_OUTPUT_DIR", "/idls_app/backend/test/output")
     frames_dir = os.path.join(output_dir, "frames")

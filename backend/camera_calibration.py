@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 
 class CameraCalibration:
+    LENS_TYPES = {"fisheye", "pinhole"}
+
     def __init__(
         self,
         cols,
@@ -12,7 +14,12 @@ class CameraCalibration:
         max_samples=120,
         min_samples=12,
         output_json_path=None,
+        lens_type="fisheye",
     ):
+        """Initialize calibration.
+
+        lens_type: "fisheye" or "pinhole".
+        """
         self.result = None
         self.cols = cols
         self.rows = rows
@@ -21,6 +28,9 @@ class CameraCalibration:
         self.max_samples = max_samples
         self.min_samples = min_samples
         self.output_json_path = output_json_path
+        if lens_type not in self.LENS_TYPES:
+            raise ValueError(f"lens_type must be one of {sorted(self.LENS_TYPES)}")
+        self.lens_type = lens_type
 
         self._pattern_size = (self.cols, self.rows)
         self._objp = self.build_asym_points(self.cols, self.rows, self.col_pitch_mm, self.row_pitch_mm)
@@ -275,46 +285,71 @@ class CameraCalibration:
                 "col_pitch_mm": self.col_pitch_mm,
                 "row_pitch_mm": self.row_pitch_mm,
             },
+            "lens_type": self.lens_type,
         }
 
         if used >= self.min_samples and self._last_size is not None:
             obj_f = [op.reshape(1, -1, 3).astype(np.float64) for op in self._objpoints]
             img_f = [ip.reshape(1, -1, 2).astype(np.float64) for ip in self._imgpoints]
-            K = np.zeros((3, 3), dtype=np.float64)
-            D = np.zeros((4, 1), dtype=np.float64)
-            flags = (
-                cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC
-                | cv2.fisheye.CALIB_CHECK_COND
-                | cv2.fisheye.CALIB_FIX_SKEW
-            )
             crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 100, 1e-6)
-            rms, K, D, rvecs, tvecs = cv2.fisheye.calibrate(
-                obj_f,
-                img_f,
-                self._last_size,
-                K,
-                D,
-                None,
-                None,
-                flags=flags,
-                criteria=crit,
-            )
 
-            newK = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
-                K, D, self._last_size, np.eye(3), balance=0.0
-            )
+            lens_type = self.lens_type
+            if lens_type == "fisheye":
+                K = np.zeros((3, 3), dtype=np.float64)
+                D = np.zeros((4, 1), dtype=np.float64)
+                flags = (
+                    cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC
+                    | cv2.fisheye.CALIB_CHECK_COND
+                    | cv2.fisheye.CALIB_FIX_SKEW
+                )
+                rms, K, D, rvecs, tvecs = cv2.fisheye.calibrate(
+                    obj_f,
+                    img_f,
+                    self._last_size,
+                    K,
+                    D,
+                    None,
+                    None,
+                    flags=flags,
+                    criteria=crit,
+                )
 
-            result.update(
-                {
-                    "calibration_performed": True,
-                    "calibration_model": "fisheye",
-                    "rms": float(rms),
-                    "K_fisheye": K.tolist(),
-                    "D_fisheye": D.reshape(-1).tolist(),
-                    "K_pinhole": newK.tolist(),
-                    "dist_pinhole": [0.0, 0.0, 0.0, 0.0],
-                }
-            )
+                newK = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
+                    K, D, self._last_size, np.eye(3), balance=0.0
+                )
+
+                result.update(
+                    {
+                        "calibration_performed": True,
+                        "calibration_model": "fisheye",
+                        "rms": float(rms),
+                        "K_fisheye": K.tolist(),
+                        "D_fisheye": D.reshape(-1).tolist(),
+                        "K_pinhole": newK.tolist(),
+                        "dist_pinhole": [0.0, 0.0, 0.0, 0.0],
+                    }
+                )
+            elif lens_type == "pinhole":
+                flags = 0
+                rms, K, dist, rvecs, tvecs = cv2.calibrateCamera(
+                    obj_f,
+                    img_f,
+                    self._last_size,
+                    None,
+                    None,
+                    flags=flags,
+                    criteria=crit,
+                )
+
+                result.update(
+                    {
+                        "calibration_performed": True,
+                        "calibration_model": "pinhole",
+                        "rms": float(rms),
+                        "K_pinhole": K.tolist(),
+                        "dist_pinhole": dist.reshape(-1).tolist(),
+                    }
+                )
             self.result = result
             return True
         else:
