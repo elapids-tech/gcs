@@ -69,8 +69,8 @@ class CameraCalibration:
         for im in tests:
             ok, centers = cv2.findCirclesGrid(im, self._pattern_size, flags=flag, blobDetector=self._detector)
             if ok:
-                return True, centers
-        return False, None
+                return centers
+        return None
 
     def _ensure_tile_grid(self, image_shape):
         h, w = image_shape
