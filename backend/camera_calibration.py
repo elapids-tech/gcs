@@ -306,6 +306,7 @@ class CameraCalibration:
 
             result.update(
                 {
+                    "calibration_performed": True,
                     "calibration_model": "fisheye",
                     "rms": float(rms),
                     "K_fisheye": K.tolist(),
@@ -314,6 +315,8 @@ class CameraCalibration:
                     "dist_pinhole": [0.0, 0.0, 0.0, 0.0],
                 }
             )
+            self.result = result
+            return True
         else:
             result.update(
                 {
@@ -323,6 +326,7 @@ class CameraCalibration:
             )
 
         self.result = result
+        return False
 
     def get_outer_points(self, centers):
         if centers is None:
