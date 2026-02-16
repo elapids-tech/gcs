@@ -161,8 +161,45 @@ const ParameterSetter: React.FC = () => {
   };
 
   const executeCalibration = async () => {
-    // TODO: backendのexecute APIに合わせて更新
-    console.warn("execute calibration not wired yet");
+    await fetch(
+      `${API_BASE_URL}/config-mode/camera-calibration/execute-calibration?camera=${encodeURIComponent(calibrationCamera)}`,
+      { method: "POST" }
+    );
+  };
+
+  const downloadCalibration = async () => {
+    const res = await fetch(
+      `${API_BASE_URL}/config-mode/camera-calibration/download?camera=${encodeURIComponent(calibrationCamera)}`
+    );
+    if (!res.ok) {
+      let message = "Calibration result not found.";
+      try {
+        const data = await res.json();
+        if (data?.message) {
+          message = String(data.message);
+        }
+      } catch (err) {
+        // ignore parse errors and fall back to default message
+      }
+      window.alert(message);
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const filename = `camera_${calibrationCamera}_calibration.json`;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const saveCalibrationToDrone = async () => {
+    // Mock only: backend wiring will be added later.
+    console.warn("save to drone is not wired yet");
   };
 
   const getCalibrationStatus = async () => {
@@ -536,8 +573,28 @@ const ParameterSetter: React.FC = () => {
               <div style={{ fontFamily: "monospace" }}>{registeredCount}</div>
 
               <div style={{ fontFamily: "monospace", fontSize: 12 }}>Calibration</div>
-              <button type="button" onClick={executeCalibration} style={{ width: 120 }}>
-                Execute
+              <div style={{ display: "flex", gap: 8 }}>
+                <button type="button" onClick={executeCalibration} style={{ width: 120 }}>
+                  Execute
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button
+                type="button"
+                onClick={() =>
+                  downloadCalibration().catch((err) => {
+                    console.warn("calibration download 失敗:", err);
+                    window.alert("Calibration download failed.");
+                  })
+                }
+                style={{ width: 160 }}
+              >
+                Download
+              </button>
+              <button type="button" onClick={saveCalibrationToDrone} style={{ width: 160 }}>
+                Save to drone
               </button>
             </div>
           </div>

@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 from pydantic import BaseModel
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect, WebSocketState
 
@@ -493,6 +493,60 @@ def stop_camera_calibration(camera: int = 0):
 @app.get("/config-mode/camera-calibration/status")
 def camera_calibration_status():
     return {"status": "ok", "running": camera_0_allow_grid_pts_registration or camera_1_allow_grid_pts_registration}
+
+
+@app.post("/config-mode/camera-calibration/execute-calibration")
+def execute_camera_calibration(camera: int = 0):
+    global camera_0_allow_grid_pts_registration, camera_1_allow_grid_pts_registration
+    if camera == 0:
+        camera_0_allow_grid_pts_registration = False
+        cc_0.execute_calibration()
+    elif camera == 1:
+        camera_1_allow_grid_pts_registration = False
+        cc_1.execute_calibration()
+
+
+@app.post("/config-mode/camera-calibration/save-to-drone")
+def save_calibration_to_drone(camera: int = 0):
+    if camera == 0:
+        result = cc_0.get_result()
+        # jsonファイルを出力しdroneに送信。
+        # 送信が完了したらdrone_app_initを実行し、キャリブレーションjsonを読み込ませる。
+    elif camera == 1:
+        result = cc_1.get_result()
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": f"Invalid camera number: {camera}"},
+        )
+    return {"status": "ok"}
+
+
+@app.get("/config-mode/camera-calibration/download")
+def download_camera_calibration(camera: int = 0):
+    if camera == 0:
+        result = cc_0.get_result()
+    elif camera == 1:
+        result = cc_1.get_result()
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": f"Invalid camera number: {camera}"},
+        )
+
+    if result is None:
+        return JSONResponse(
+            status_code=404,
+            content={"status": "error", "message": "No calibration result available."},
+        )
+
+    payload = json.dumps(result, indent=2)
+    filename = f"camera_{camera}_calibration.json"
+    return Response(
+        content=payload,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 async def periodic_task():
