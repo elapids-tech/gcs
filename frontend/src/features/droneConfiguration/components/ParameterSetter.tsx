@@ -71,6 +71,7 @@ const ParameterSetter: React.FC = () => {
   const [calibrationCamera, setCalibrationCamera] = useState<string>("0");
   const [calibrationRunningByCamera, setCalibrationRunningByCamera] = useState<Record<number, boolean>>({ 0: false, 1: false });
   const [registeredCounts, setRegisteredCounts] = useState<Record<number, number>>({ 0: 0, 1: 0 });
+  const calibrationRunningRef = useRef<Record<number, boolean>>({ 0: false, 1: false });
 
   const [dotAreaMin, setDotAreaMin] = useState<number>(DOT_AREA_MIN_DEFAULT);
   const [dotAreaMax, setDotAreaMax] = useState<number>(DOT_AREA_MAX_DEFAULT);
@@ -211,6 +212,10 @@ const ParameterSetter: React.FC = () => {
   };
 
   useEffect(() => {
+    calibrationRunningRef.current = calibrationRunningByCamera;
+  }, [calibrationRunningByCamera]);
+
+  useEffect(() => {
     const anyRunning = Object.values(calibrationRunningByCamera).some(Boolean);
     if (!anyRunning) {
       return undefined;
@@ -227,12 +232,12 @@ const ParameterSetter: React.FC = () => {
 
   useEffect(() => {
     return () => {
-      const anyRunning = Object.values(calibrationRunningByCamera).some(Boolean);
+      const anyRunning = Object.values(calibrationRunningRef.current).some(Boolean);
       if (anyRunning) {
         stopCalibration().catch((err) => console.warn("calibration stop 送信失敗:", err));
       }
     };
-  }, [calibrationRunningByCamera]);
+  }, []);
 
   const postBinThreshold = async (value: number) => {
     await fetch(`${API_BASE_URL}/config-mode/set-bin-threshold?threshold=${value}`, {

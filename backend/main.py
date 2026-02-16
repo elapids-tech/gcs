@@ -9,6 +9,7 @@ from typing import Optional
 
 import cv2
 import numpy as np
+import uvicorn
 from pydantic import BaseModel
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, Response
