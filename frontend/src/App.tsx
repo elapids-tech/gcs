@@ -244,13 +244,13 @@ function MainLayout() {
           className={activeTab === 'preview' ? 'active' : ''}
           onClick={() => setActiveTab('preview')}
         >
-          プレビュー
+          3D Viewer
         </button>
         <button
           className={activeTab === 'config' ? 'active' : ''}
           onClick={() => setActiveTab('config')}
         >
-          コンフィグレーション
+          Drone Configuration
         </button>
       </div>
 

@@ -63,7 +63,6 @@ const DroneConfigurationPage: React.FC = () => {
 
   return (
     <div style={{ padding: "16px", height: "100vh", boxSizing: "border-box", overflow: "hidden" }}>
-      <h2>Drone Configuration</h2>
       <div ref={containerRef} style={{ display: "flex", gap: 0, height: "calc(100vh - 72px)" }}>
         <div
           style={{
