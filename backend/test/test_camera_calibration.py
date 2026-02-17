@@ -38,10 +38,10 @@ def test_camera_calibration():
         frame_count += 1
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         bw = cc.binarize(gray)
-        ok_grid, centers = cc.find_asymmetric_grid(bw)
+        centers = cc.find_asymmetric_grid(bw)
 
         accepted = False
-        if ok_grid and centers is not None:
+        if centers is not None:
             accepted = cc.add_grid_points(centers, image_shape=gray.shape[:2])
 
         annotated = cc.draw_detected_points(frame, centers)

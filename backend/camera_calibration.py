@@ -219,6 +219,139 @@ class CameraCalibration:
     def get_registered_frame_count(self):
         return len(self._objpoints)
 
+    def _ensure_similarity_state(self):
+        if not hasattr(self, "_feature_history"):
+            self._feature_history = []
+        if not hasattr(self, "_feature_key_set"):
+            self._feature_key_set = set()
+        if not hasattr(self, "_feature_key_history"):
+            self._feature_key_history = []
+        if not hasattr(self, "_feature_history_limit"):
+            self._feature_history_limit = 300
+
+        # Similarity thresholds (tune if needed)
+        # Smaller -> stricter rejection
+        if not hasattr(self, "_similarity_dist_thresh"):
+            self._similarity_dist_thresh = 0.08
+        if not hasattr(self, "_similarity_key_bins"):
+            # Quantization bins for fast duplicate rejection
+            self._similarity_key_bins = {
+                "c": 24,   # center bins per axis
+                "s": 24,   # scale bins (log scale)
+                "a": 18,   # aspect bins (log aspect)
+                "ang": 24, # angle bins over [-pi, pi)
+            }
+
+    def _compute_grid_feature(self, centers, image_shape):
+        pts = np.asarray(centers, dtype=np.float32)
+        if pts.ndim == 3 and pts.shape[1:] == (1, 2):
+            pts = pts.reshape(-1, 2)
+        if pts.ndim != 2 or pts.shape[1] != 2:
+            raise ValueError("centers must be a Nx2 array or Nx1x2 array")
+
+        h, w = image_shape
+        if w <= 0 or h <= 0:
+            raise ValueError("invalid image_shape")
+
+        # Center (normalized)
+        mean = np.mean(pts, axis=0)
+        cx = float(mean[0]) / float(w)
+        cy = float(mean[1]) / float(h)
+
+        # Bounding box for scale/aspect (normalized)
+        min_xy = np.min(pts, axis=0)
+        max_xy = np.max(pts, axis=0)
+        bw = float(max_xy[0] - min_xy[0])
+        bh = float(max_xy[1] - min_xy[1])
+
+        # Reject degenerate boxes
+        if bw <= 1e-6 or bh <= 1e-6:
+            return None
+
+        diag = np.sqrt(bw * bw + bh * bh)
+        norm = float(min(w, h))
+        scale = float(diag) / norm
+        if scale <= 1e-9:
+            return None
+
+        aspect = bw / bh
+        if aspect <= 1e-9:
+            return None
+
+        # PCA angle (principal axis)
+        # Center points for PCA
+        X = pts - mean.reshape(1, 2)
+        cov = (X.T @ X) / max(1, (X.shape[0] - 1))
+        evals, evecs = np.linalg.eigh(cov)
+        # largest eigenvector
+        v = evecs[:, int(np.argmax(evals))]
+        angle = float(np.arctan2(v[1], v[0]))  # [-pi, pi)
+
+        # Log-space for scale/aspect to stabilize
+        ls = float(np.log(scale))
+        la = float(np.log(aspect))
+
+        # Feature vector
+        # cx, cy in [0,1], ls/ la unbounded but typically small
+        return np.array([cx, cy, ls, la, angle], dtype=np.float32)
+
+    def _feature_distance(self, f1, f2):
+        # Weighted distance with angle wrap-around
+        # f = [cx, cy, ls, la, angle]
+        dcx = float(f1[0] - f2[0])
+        dcy = float(f1[1] - f2[1])
+        dls = float(f1[2] - f2[2])
+        dla = float(f1[3] - f2[3])
+
+        a1 = float(f1[4])
+        a2 = float(f2[4])
+        da = a1 - a2
+        # wrap to [-pi, pi]
+        da = (da + np.pi) % (2.0 * np.pi) - np.pi
+
+        # Weights (tune if needed)
+        wc = 1.0
+        ws = 0.7
+        wa = 0.5
+        wang = 0.4
+
+        return np.sqrt(
+            wc * (dcx * dcx + dcy * dcy)
+            + ws * (dls * dls)
+            + wa * (dla * dla)
+            + wang * (da * da)
+        )
+
+    def _quantize_feature(self, f):
+        bins = self._similarity_key_bins
+        cb = int(bins["c"])
+        sb = int(bins["s"])
+        ab = int(bins["a"])
+        angb = int(bins["ang"])
+
+        # cx, cy in [0,1]
+        qcx = int(np.clip(np.floor(f[0] * cb), 0, cb - 1))
+        qcy = int(np.clip(np.floor(f[1] * cb), 0, cb - 1))
+
+        # ls, la: clamp to reasonable range before binning
+        # These ranges are pragmatic defaults; adjust if your setup differs a lot.
+        ls = float(np.clip(f[2], -4.0, 2.0))   # scale about exp([-4,2]) ~ [0.018, 7.39]
+        la = float(np.clip(f[3], -2.0, 2.0))   # aspect about exp([-2,2]) ~ [0.135, 7.39]
+
+        # map to [0,1]
+        ls01 = (ls - (-4.0)) / (2.0 - (-4.0))
+        la01 = (la - (-2.0)) / (2.0 - (-2.0))
+
+        qls = int(np.clip(np.floor(ls01 * sb), 0, sb - 1))
+        qla = int(np.clip(np.floor(la01 * ab), 0, ab - 1))
+
+        # angle in [-pi, pi) -> [0,1)
+        ang = float(f[4])
+        ang01 = (ang + np.pi) / (2.0 * np.pi)
+        qang = int(np.clip(np.floor(ang01 * angb), 0, angb - 1))
+
+        return (qcx, qcy, qls, qla, qang)
+
     def add_grid_points(self, grid_points, image_shape=None):
         """Add detected grid points.
 
@@ -226,6 +359,8 @@ class CameraCalibration:
         """
         if grid_points is None:
             return False
+
+        self._ensure_similarity_state()
 
         pts = np.asarray(grid_points, dtype=np.float32)
         if pts.ndim == 2 and pts.shape[1] == 2:
@@ -251,6 +386,17 @@ class CameraCalibration:
 
         h, w = image_shape
         self._last_size = (w, h)
+
+        # Basic sanity: all points must be finite and not wildly out of bounds
+        c2 = centers.reshape(-1, 2)
+        if not np.isfinite(c2).all():
+            return False
+        if np.min(c2[:, 0]) < -0.25 * w or np.max(c2[:, 0]) > 1.25 * w:
+            return False
+        if np.min(c2[:, 1]) < -0.25 * h or np.max(c2[:, 1]) > 1.25 * h:
+            return False
+
+        # Existing tile-overlap based duplicate rejection
         tiles, _ = self._get_overlap_tiles(image_shape, centers)
         if not tiles:
             return False
@@ -259,11 +405,41 @@ class CameraCalibration:
         if tiles_key in self._overlap_history_set:
             return False
 
+        # New: feature-based similarity rejection
+        feat = self._compute_grid_feature(centers, image_shape)
+        if feat is None:
+            return False
+
+        feat_key = self._quantize_feature(feat)
+        if feat_key in self._feature_key_set:
+            return False
+
+        # Compare with recent history for continuous distance
+        # To keep runtime bounded, check only the last N features
+        recent = self._feature_history[-120:] if len(self._feature_history) > 120 else self._feature_history
+        for fprev in recent:
+            d = self._feature_distance(feat, fprev)
+            if d < float(self._similarity_dist_thresh):
+                return False
+
+        # Accept: update histories
         self._overlap_history.append(tiles_key)
         self._overlap_history_set.add(tiles_key)
         if len(self._overlap_history) > self._overlap_history_limit:
             oldest = self._overlap_history.pop(0)
             self._overlap_history_set.discard(oldest)
+
+        self._feature_history.append(feat)
+        self._feature_key_history.append(feat_key)
+        self._feature_key_set.add(feat_key)
+
+        if len(self._feature_history) > self._feature_history_limit:
+            drop_n = len(self._feature_history) - self._feature_history_limit
+            for _ in range(drop_n):
+                self._feature_history.pop(0)
+                old_key = self._feature_key_history.pop(0)
+                self._feature_key_set.discard(old_key)
+
         self._objpoints.append(self._objp)
         self._imgpoints.append(centers)
 
