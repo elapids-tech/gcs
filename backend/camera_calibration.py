@@ -465,12 +465,12 @@ class CameraCalibration:
         }
 
         if used >= self.min_samples and self._last_size is not None:
-            obj_f = [op.reshape(1, -1, 3).astype(np.float64) for op in self._objpoints]
-            img_f = [ip.reshape(1, -1, 2).astype(np.float64) for ip in self._imgpoints]
             crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 100, 1e-6)
 
             lens_type = self.lens_type
             if lens_type == "fisheye":
+                obj_f = [op.reshape(1, -1, 3).astype(np.float64) for op in self._objpoints]
+                img_f = [ip.reshape(1, -1, 2).astype(np.float64) for ip in self._imgpoints]
                 K = np.zeros((3, 3), dtype=np.float64)
                 D = np.zeros((4, 1), dtype=np.float64)
                 flags = (
@@ -478,17 +478,33 @@ class CameraCalibration:
                     | cv2.fisheye.CALIB_CHECK_COND
                     | cv2.fisheye.CALIB_FIX_SKEW
                 )
-                rms, K, D, rvecs, tvecs = cv2.fisheye.calibrate(
-                    obj_f,
-                    img_f,
-                    self._last_size,
-                    K,
-                    D,
-                    None,
-                    None,
-                    flags=flags,
-                    criteria=crit,
-                )
+                try:
+                    rms, K, D, rvecs, tvecs = cv2.fisheye.calibrate(
+                        obj_f,
+                        img_f,
+                        self._last_size,
+                        K,
+                        D,
+                        None,
+                        None,
+                        flags=flags,
+                        criteria=crit,
+                    )
+                except cv2.error as exc:
+                    # Retry without CALIB_CHECK_COND to avoid hard failures on borderline frames.
+                    flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC | cv2.fisheye.CALIB_FIX_SKEW
+                    rms, K, D, rvecs, tvecs = cv2.fisheye.calibrate(
+                        obj_f,
+                        img_f,
+                        self._last_size,
+                        K,
+                        D,
+                        None,
+                        None,
+                        flags=flags,
+                        criteria=crit,
+                    )
+                    result["calibration_warning"] = f"fisheye CALIB_CHECK_COND failed: {exc}"
 
                 newK = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
                     K, D, self._last_size, np.eye(3), balance=0.0
@@ -506,6 +522,8 @@ class CameraCalibration:
                     }
                 )
             elif lens_type == "pinhole":
+                obj_f = [op.reshape(-1, 3).astype(np.float32) for op in self._objpoints]
+                img_f = [ip.reshape(-1, 2).astype(np.float32) for ip in self._imgpoints]
                 flags = 0
                 rms, K, dist, rvecs, tvecs = cv2.calibrateCamera(
                     obj_f,
