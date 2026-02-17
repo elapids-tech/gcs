@@ -501,13 +501,19 @@ def camera_calibration_status():
 
 
 @app.post("/config-mode/camera-calibration/execute-calibration")
-async def execute_camera_calibration(camera: int = 0):
+async def execute_camera_calibration(camera: int = 0, lens_type: str = "fisheye"):
     global camera_0_allow_grid_pts_registration, camera_1_allow_grid_pts_registration
 
     if camera not in (0, 1):
         return JSONResponse(
             status_code=400,
             content={"status": "error", "message": f"Invalid camera number: {camera}"},
+        )
+
+    if lens_type not in CameraCalibration.LENS_TYPES:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": f"Invalid lens_type: {lens_type}"},
         )
 
     status = calibration_execute_status[camera]
@@ -519,8 +525,10 @@ async def execute_camera_calibration(camera: int = 0):
 
     if camera == 0:
         camera_0_allow_grid_pts_registration = False
+        cc_0.lens_type = lens_type
     else:
         camera_1_allow_grid_pts_registration = False
+        cc_1.lens_type = lens_type
 
     status["running"] = True
     status["started_at"] = time.time()

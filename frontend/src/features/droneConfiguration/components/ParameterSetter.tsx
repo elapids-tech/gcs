@@ -69,6 +69,7 @@ const ParameterSetter: React.FC = () => {
   const [hoveredSection, setHoveredSection] = useState<"threshold" | "camera" | "calibration" | "landmark" | null>(null);
 
   const [calibrationCamera, setCalibrationCamera] = useState<string>("0");
+  const [calibrationLensType, setCalibrationLensType] = useState<string>("pinhole");
   const [calibrationRunningByCamera, setCalibrationRunningByCamera] = useState<Record<number, boolean>>({ 0: false, 1: false });
   const [executeRunningByCamera, setExecuteRunningByCamera] = useState<Record<number, boolean>>({ 0: false, 1: false });
   const [executeResultByCamera, setExecuteResultByCamera] = useState<Record<number, boolean>>({ 0: false, 1: false });
@@ -169,7 +170,7 @@ const ParameterSetter: React.FC = () => {
 
   const executeCalibration = async () => {
     const res = await fetch(
-      `${API_BASE_URL}/config-mode/camera-calibration/execute-calibration?camera=${encodeURIComponent(calibrationCamera)}`,
+      `${API_BASE_URL}/config-mode/camera-calibration/execute-calibration?camera=${encodeURIComponent(calibrationCamera)}&lens_type=${encodeURIComponent(calibrationLensType)}`,
       { method: "POST" }
     );
     if (!res.ok) {
@@ -630,6 +631,17 @@ const ParameterSetter: React.FC = () => {
               >
                 <option value="0">camera 0</option>
                 <option value="1">camera 1</option>
+              </select>
+
+              <div style={{ fontFamily: "monospace", fontSize: 12 }}>Lens Type</div>
+              <select
+                value={calibrationLensType}
+                onChange={(e) => setCalibrationLensType(e.target.value)}
+                disabled={executeRunning}
+                style={{ width: 160 }}
+              >
+                <option value="fisheye">fisheye</option>
+                <option value="pinhole">pinhole</option>
               </select>
 
               <div style={{ fontFamily: "monospace", fontSize: 12 }}>Grid Detection</div>
