@@ -44,6 +44,7 @@ class CameraCalibration:
         self._overlap_history = []
         self._overlap_history_set = set()
         self._overlap_history_limit = 200
+        self._executing = False
 
     def build_asym_points(self, cols, rows, col_pitch, row_pitch):
         objp = np.zeros((rows * cols, 3), np.float32)
@@ -218,6 +219,28 @@ class CameraCalibration:
 
     def get_registered_frame_count(self):
         return len(self._objpoints)
+
+    def is_executing(self):
+        return bool(self._executing)
+
+    def reset_registered_grids(self):
+        """Clear all registered grid detections and related state."""
+        if self._executing:
+            raise RuntimeError("Calibration execution in progress")
+        self._objpoints = []
+        self._imgpoints = []
+        self._last_size = None
+        self._tile_counts = None
+        self._tile_grid = None
+        self._overlap_history = []
+        self._overlap_history_set = set()
+        self._feature_history = []
+        self._feature_key_set = set()
+        self._feature_key_history = []
+        self.result = None
+
+    def reset_calibration_data(self):
+        self.reset_registered_grids()
 
     def _ensure_similarity_state(self):
         if not hasattr(self, "_feature_history"):
@@ -452,6 +475,9 @@ class CameraCalibration:
         return True
 
     def execute_calibration(self):
+        if self._executing:
+            raise RuntimeError("Calibration already running")
+        self._executing = True
         used = len(self._objpoints)
         result = {
             "pattern": {"cols": self.cols, "rows": self.rows, "type": "asymmetric"},
@@ -463,72 +489,72 @@ class CameraCalibration:
             },
             "lens_type": self.lens_type,
         }
+        try:
+            if used >= self.min_samples and self._last_size is not None:
+                obj_f = [op.reshape(1, -1, 3).astype(np.float64) for op in self._objpoints]
+                img_f = [ip.reshape(1, -1, 2).astype(np.float64) for ip in self._imgpoints]
+                crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 100, 1e-6)
 
-        if used >= self.min_samples and self._last_size is not None:
-            obj_f = [op.reshape(1, -1, 3).astype(np.float64) for op in self._objpoints]
-            img_f = [ip.reshape(1, -1, 2).astype(np.float64) for ip in self._imgpoints]
-            crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 100, 1e-6)
+                lens_type = self.lens_type
+                if lens_type == "fisheye":
+                    K = np.zeros((3, 3), dtype=np.float64)
+                    D = np.zeros((4, 1), dtype=np.float64)
+                    flags = (
+                        cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC
+                        | cv2.fisheye.CALIB_CHECK_COND
+                        | cv2.fisheye.CALIB_FIX_SKEW
+                    )
+                    rms, K, D, rvecs, tvecs = cv2.fisheye.calibrate(
+                        obj_f,
+                        img_f,
+                        self._last_size,
+                        K,
+                        D,
+                        None,
+                        None,
+                        flags=flags,
+                        criteria=crit,
+                    )
 
-            lens_type = self.lens_type
-            if lens_type == "fisheye":
-                K = np.zeros((3, 3), dtype=np.float64)
-                D = np.zeros((4, 1), dtype=np.float64)
-                flags = (
-                    cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC
-                    | cv2.fisheye.CALIB_CHECK_COND
-                    | cv2.fisheye.CALIB_FIX_SKEW
-                )
-                rms, K, D, rvecs, tvecs = cv2.fisheye.calibrate(
-                    obj_f,
-                    img_f,
-                    self._last_size,
-                    K,
-                    D,
-                    None,
-                    None,
-                    flags=flags,
-                    criteria=crit,
-                )
+                    newK = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
+                        K, D, self._last_size, np.eye(3), balance=0.0
+                    )
 
-                newK = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
-                    K, D, self._last_size, np.eye(3), balance=0.0
-                )
+                    result.update(
+                        {
+                            "calibration_performed": True,
+                            "calibration_model": "fisheye",
+                            "rms": float(rms),
+                            "K_fisheye": K.tolist(),
+                            "D_fisheye": D.reshape(-1).tolist(),
+                            "K_pinhole": newK.tolist(),
+                            "dist_pinhole": [0.0, 0.0, 0.0, 0.0],
+                        }
+                    )
+                elif lens_type == "pinhole":
+                    flags = 0
+                    rms, K, dist, rvecs, tvecs = cv2.calibrateCamera(
+                        obj_f,
+                        img_f,
+                        self._last_size,
+                        None,
+                        None,
+                        flags=flags,
+                        criteria=crit,
+                    )
 
-                result.update(
-                    {
-                        "calibration_performed": True,
-                        "calibration_model": "fisheye",
-                        "rms": float(rms),
-                        "K_fisheye": K.tolist(),
-                        "D_fisheye": D.reshape(-1).tolist(),
-                        "K_pinhole": newK.tolist(),
-                        "dist_pinhole": [0.0, 0.0, 0.0, 0.0],
-                    }
-                )
-            elif lens_type == "pinhole":
-                flags = 0
-                rms, K, dist, rvecs, tvecs = cv2.calibrateCamera(
-                    obj_f,
-                    img_f,
-                    self._last_size,
-                    None,
-                    None,
-                    flags=flags,
-                    criteria=crit,
-                )
+                    result.update(
+                        {
+                            "calibration_performed": True,
+                            "calibration_model": "pinhole",
+                            "rms": float(rms),
+                            "K_pinhole": K.tolist(),
+                            "dist_pinhole": dist.reshape(-1).tolist(),
+                        }
+                    )
+                self.result = result
+                return True
 
-                result.update(
-                    {
-                        "calibration_performed": True,
-                        "calibration_model": "pinhole",
-                        "rms": float(rms),
-                        "K_pinhole": K.tolist(),
-                        "dist_pinhole": dist.reshape(-1).tolist(),
-                    }
-                )
-            self.result = result
-            return True
-        else:
             result.update(
                 {
                     "calibration_performed": False,
@@ -536,8 +562,10 @@ class CameraCalibration:
                 }
             )
 
-        self.result = result
-        return False
+            self.result = result
+            return False
+        finally:
+            self._executing = False
 
     def get_outer_points(self, centers):
         if centers is None:
