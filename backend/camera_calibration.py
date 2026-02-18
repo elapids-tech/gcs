@@ -552,8 +552,9 @@ class CameraCalibration:
                         }
                     )
                 elif lens_type == "pinhole":
-                    obj_f = [op.reshape(1, -1, 3).astype(np.float64) for op in self._objpoints]
-                    img_f = [ip.reshape(1, -1, 2).astype(np.float64) for ip in self._imgpoints]
+                    # calibrateCamera expects a list of Nx3 and Nx2 point arrays (not 1xNx3)
+                    obj_f = [op.reshape(-1, 3).astype(np.float32) for op in self._objpoints]
+                    img_f = [ip.reshape(-1, 2).astype(np.float32) for ip in self._imgpoints]
                     flags = 0
                     rms, K, dist, rvecs, tvecs = cv2.calibrateCamera(
                         obj_f,
