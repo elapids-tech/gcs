@@ -219,6 +219,26 @@ const ParameterSetter: React.FC = () => {
     console.warn("save to drone is not wired yet");
   };
 
+  const resetCalibration = async () => {
+    const res = await fetch(
+      `${API_BASE_URL}/config-mode/camera-calibration/reset-calibration-data?camera=${encodeURIComponent(calibrationCamera)}`,
+      { method: "POST" }
+    );
+    if (!res.ok) {
+      const message = await res.text();
+      console.warn("reset-calibration-data failed:", message);
+      window.alert(message || "Reset failed.");
+      return;
+    }
+    const data = await res.json();
+    const count = Number(data?.registeredCount);
+    if (!Number.isNaN(count)) {
+      setRegisteredCounts((prev) => ({ ...prev, [selectedCamera]: count }));
+    }
+    setExecuteResultByCamera((prev) => ({ ...prev, [selectedCamera]: false }));
+    setExecuteErrorByCamera((prev) => ({ ...prev, [selectedCamera]: null }));
+  };
+
   const getCalibrationStatus = async () => {
     const res = await fetch(`${API_BASE_URL}/config-mode/camera-calibration/status`);
     if (!res.ok) {
@@ -660,7 +680,7 @@ const ParameterSetter: React.FC = () => {
                     }));
                   }
                 }}
-                style={{ width: 120 }}
+                style={{ width: 160 }}
               >
                 {calibrationRunning ? "Stop" : "Start"}
               </button>
@@ -673,7 +693,7 @@ const ParameterSetter: React.FC = () => {
                 <button
                   type="button"
                   onClick={executeCalibration}
-                  style={{ width: 120 }}
+                  style={{ width: 160 }}
                   disabled={executeRunning}
                 >
                   {executeRunning ? "Executing..." : "Execute"}
@@ -684,9 +704,8 @@ const ParameterSetter: React.FC = () => {
                 {executeRunning ? "running" : executeResultAvailable ? "ready" : "no result"}
                 {executeError ? ` (error: ${executeError})` : ""}
               </div>
-            </div>
 
-            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <div style={{ fontFamily: "monospace", fontSize: 12 }}>Result download</div>
               <button
                 type="button"
                 onClick={() =>
@@ -700,8 +719,22 @@ const ParameterSetter: React.FC = () => {
               >
                 Download
               </button>
+
+              <div style={{ fontFamily: "monospace", fontSize: 12 }}>Save to drone</div>
               <button type="button" onClick={saveCalibrationToDrone} style={{ width: 160 }}>
-                Save to drone
+                Save
+              </button>
+
+              <div style={{ gridColumn: "1 / -1", borderTop: "1px solid #ccc", marginTop: 6, paddingTop: 10 }} />
+
+              <div />
+              <button
+                type="button"
+                onClick={resetCalibration}
+                style={{ width: 160 }}
+                disabled={executeRunning}
+              >
+                Reset
               </button>
             </div>
           </div>

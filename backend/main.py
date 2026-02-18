@@ -582,22 +582,6 @@ def get_execute_calibration_status(camera: int = 0):
     }
 
 
-@app.post("/config-mode/camera-calibration/save-to-drone")
-def save_calibration_to_drone(camera: int = 0):
-    if camera == 0:
-        result = cc_0.get_result()
-        # jsonファイルを出力しdroneに送信。
-        # 送信が完了したらdrone_app_initを実行し、キャリブレーションjsonを読み込ませる。
-    elif camera == 1:
-        result = cc_1.get_result()
-    else:
-        return JSONResponse(
-            status_code=400,
-            content={"status": "error", "message": f"Invalid camera number: {camera}"},
-        )
-    return {"status": "ok"}
-
-
 @app.get("/config-mode/camera-calibration/download")
 def download_camera_calibration(camera: int = 0):
     if calibration_execute_status.get(camera, {}).get("running"):
@@ -628,6 +612,59 @@ def download_camera_calibration(camera: int = 0):
         media_type="application/json",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@app.post("/config-mode/camera-calibration/save-to-drone")
+def save_calibration_to_drone(camera: int = 0):
+    if camera == 0:
+        result = cc_0.get_result()
+        # jsonファイルを出力しdroneに送信。
+        # 送信が完了したらdrone_app_initを実行し、キャリブレーションjsonを読み込ませる。
+    elif camera == 1:
+        result = cc_1.get_result()
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": f"Invalid camera number: {camera}"},
+        )
+    return {"status": "ok"}
+
+
+@app.post("/config-mode/camera-calibration/reset-calibration-data")
+async def reset_calibration_data(camera: int = 0):
+    if camera not in (0, 1):
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": f"Invalid camera number: {camera}"},
+        )
+
+    if calibration_execute_status.get(camera, {}).get("running"):
+        return JSONResponse(
+            status_code=409,
+            content={"status": "error", "message": "Calibration is running."},
+        )
+
+    cal = cc_0 if camera == 0 else cc_1
+    if cal.is_executing():
+        return JSONResponse(
+            status_code=409,
+            content={"status": "error", "message": "Calibration is running."},
+        )
+
+    try:
+        cal.reset_calibration_data()
+    except RuntimeError as exc:
+        return JSONResponse(
+            status_code=409,
+            content={"status": "error", "message": str(exc)},
+        )
+
+    count = cal.get_registered_frame_count()
+    camera_calibration_counts[camera] = count
+    calibration_execute_status[camera]["result_available"] = False
+    calibration_execute_status[camera]["last_error"] = None
+    await _broadcast_calibration_update(camera)
+    return {"status": "ok", "camera": camera, "registeredCount": count}
 
 
 async def periodic_task():
