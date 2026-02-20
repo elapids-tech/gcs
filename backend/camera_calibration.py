@@ -543,7 +543,7 @@ class CameraCalibration:
                     result.update(
                         {
                             "calibration_performed": True,
-                            "calibration_model": "fisheye",
+                            "calibration_model": "FISHEYE",
                             "rms": float(rms),
                             "K_fisheye": K.tolist(),
                             "D_fisheye": D.reshape(-1).tolist(),
@@ -569,7 +569,7 @@ class CameraCalibration:
                     result.update(
                         {
                             "calibration_performed": True,
-                            "calibration_model": "pinhole",
+                            "calibration_model": "PINHOLE",
                             "rms": float(rms),
                             "K_pinhole": K.tolist(),
                             "dist_pinhole": dist.reshape(-1).tolist(),
