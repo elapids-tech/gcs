@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 import time
 import asyncio
 import socket
@@ -10,14 +11,16 @@ from typing import Optional
 import cv2
 import numpy as np
 import uvicorn
+import os
 from pydantic import BaseModel
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect, WebSocketState
 
 from backend.mavlink_client import MavlinkClient
 from backend.camera_calibration import CameraCalibration
+from backend.video_recorder import VideoRecorder
 
 try:
     from uvicorn.protocols.utils import ClientDisconnected
@@ -92,12 +95,16 @@ app.add_middleware(
 )
 
 manager = ConnectionManager()
+
 mavlink_client = MavlinkClient(host_ip="192.168.0.6")
-camera_0_allow_grid_pts_registration = False
-camera_1_allow_grid_pts_registration = False
+
+VIDEO_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "recordings")
+rec = VideoRecorder(output_dir=VIDEO_OUTPUT_DIR)
+
 cc_0 = CameraCalibration(cols=4, rows=11, col_pitch_mm=20.0, row_pitch_mm=None)
 cc_1 = CameraCalibration(cols=4, rows=11, col_pitch_mm=20.0, row_pitch_mm=None)
-
+camera_0_allow_grid_pts_registration = False
+camera_1_allow_grid_pts_registration = False
 camera_calibration_counts = {0: 0, 1: 0}
 last_broadcasted_calibration = {0: {"count": -1, "running": None}, 1: {"count": -1, "running": None}}
 calibration_execute_status = {
@@ -185,7 +192,7 @@ async def _update_latest_frame(data: bytes, ts: float):
         pending_frame = {"data": data, "ts": ts}
 
 
-async def _process_pending_frames():
+async def _image_processing_loop():
     """保持中の最新フレームだけを処理する"""
     global latest_frame, latest_split_frame, last_frame_size
     global placeholder_left_jpeg, placeholder_right_jpeg, placeholder_size
@@ -209,14 +216,21 @@ async def _process_pending_frames():
 
         try:
             arr = np.frombuffer(data, dtype=np.uint8)
-            gray = cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
-            if gray is None:
+            if arr.size == 0:
                 continue
+            gray = cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
+
+            is_recording = rec.is_recording()
+            if is_recording:
+                rec.update(gray)
+
             color = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
 
             h, w = gray.shape[:2]
+
             if last_frame_size is None:
                 last_frame_size = (w, h)
+
             if (w, h) != placeholder_size:
                 placeholder_size = (w, h)
                 placeholder_img = build_placeholder_image(placeholder_size)
@@ -228,7 +242,7 @@ async def _process_pending_frames():
             left_img, right_img = split_frame(color)
             left_gray, right_gray = split_frame(gray)
 
-            # 分割後のフレームに対する画像処理はここで実行する
+            # カメラごとにキャリブレーションを実行する
             if camera_0_allow_grid_pts_registration:
                 bw_left = cc_0.binarize(left_gray)
                 centers_left = cc_0.find_asymmetric_grid(bw_left)
@@ -254,6 +268,7 @@ async def _process_pending_frames():
                 if tile_counts is not None:
                     right_img = cc_1.draw_overlay(right_img, tile_counts, alpha=0.5, max_count=10)
 
+            # encode jpeg
             left_jpeg = encode_jpeg(left_img)
             right_jpeg = encode_jpeg(right_img)
 
@@ -310,6 +325,47 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         with contextlib.suppress(Exception):
             await websocket.close()
+
+
+@app.post("/recording/start")
+async def start_recording():
+    info = rec.start()
+    return {"status": "ok", "filename": info.get("filename")}
+
+
+@app.post("/recording/stop")
+async def stop_recording():
+    result_info = rec.stop()
+    files = rec.get_video_file_name_list()
+    return {"status": "ok", "filename": result_info.get("filename"), "files": files}
+
+
+@app.get("/recording/list")
+async def list_recordings():
+    recording = rec.get_current_filename()
+    files = rec.get_video_file_name_list()
+    return {"status": "ok", "recording": recording, "files": files}
+
+
+@app.get("/recording/download/{filename}")
+async def download_recording(filename: str):
+    if not re.match(r"^[\w\-]+\.mp4$", filename):
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": "Invalid filename."},
+        )
+    filepath = os.path.join(VIDEO_OUTPUT_DIR, filename)
+    if not os.path.isfile(filepath):
+        return JSONResponse(
+            status_code=404,
+            content={"status": "error", "message": "File not found."},
+        )
+    if rec.get_current_filename() == filename:
+        return JSONResponse(
+            status_code=409,
+            content={"status": "error", "message": "File is currently being recorded."},
+        )
+    return FileResponse(filepath, media_type="video/mp4", filename=filename)
 
 
 @app.websocket("/ws/video")
@@ -777,7 +833,7 @@ async def startup_event():
         raise
 
     asyncio.create_task(periodic_task())
-    asyncio.create_task(_process_pending_frames())
+    asyncio.create_task(_image_processing_loop())
     print("[startup] periodic_task started")
 
 

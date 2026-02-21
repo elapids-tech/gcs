@@ -66,8 +66,12 @@ const ParameterSetter: React.FC = () => {
   const [cameraSettingsOpen, setCameraSettingsOpen] = useState<boolean>(false);
   const [cameraCalibrationOpen, setCameraCalibrationOpen] = useState<boolean>(false);
   const [landmarkSettingsOpen, setLandmarkSettingsOpen] = useState<boolean>(false);
-  const [hoveredSection, setHoveredSection] = useState<"threshold" | "camera" | "calibration" | "landmark" | null>(null);
-
+  const [hoveredSection, setHoveredSection] = useState<"threshold" | "camera" | "calibration" | "landmark" | "recording" | null>(null);
+  const [recording, setRecording] = useState<boolean>(false);
+  const [recordingOpen, setRecordingOpen] = useState<boolean>(false);
+  const [recordingFiles, setRecordingFiles] = useState<string[]>([]);
+  const [recordingInProgress, setRecordingInProgress] = useState<string | null>(null);
+  const [selectedRecordingFile, setSelectedRecordingFile] = useState<string>("");
   const [calibrationCamera, setCalibrationCamera] = useState<string>("0");
   const [calibrationLensType, setCalibrationLensType] = useState<string>("pinhole");
   const [calibrationRunningByCamera, setCalibrationRunningByCamera] = useState<Record<number, boolean>>({ 0: false, 1: false });
@@ -219,6 +223,64 @@ const ParameterSetter: React.FC = () => {
     console.warn("save to drone is not wired yet");
   };
 
+  const startRecording = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/recording/start`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setRecordingInProgress(data.filename ?? null);
+        setRecording(true);
+      } else {
+        console.warn("recording start failed");
+      }
+    } catch (e) {
+      console.warn("recording start error:", e);
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/recording/stop`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setRecordingInProgress(null);
+        setRecording(false);
+        if (Array.isArray(data.files)) {
+          setRecordingFiles(data.files);
+          if (data.filename && !selectedRecordingFile) {
+            setSelectedRecordingFile(data.filename);
+          }
+        }
+      } else {
+        console.warn("recording stop failed");
+      }
+    } catch (e) {
+      console.warn("recording stop error:", e);
+    }
+  };
+
+  const downloadRecordingFile = async (fileName: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/recording/download/${encodeURIComponent(fileName)}`);
+      if (!res.ok) {
+        window.alert("Download failed.");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.warn("download error:", e);
+      window.alert("Download failed.");
+    }
+  };
+
   const resetCalibration = async () => {
     const res = await fetch(
       `${API_BASE_URL}/config-mode/camera-calibration/reset-calibration-data?camera=${encodeURIComponent(calibrationCamera)}`,
@@ -337,6 +399,26 @@ const ParameterSetter: React.FC = () => {
         stopCalibration().catch((err) => console.warn("calibration stop 送信失敗:", err));
       }
     };
+  }, []);
+
+  useEffect(() => {
+    const fetchList = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/recording/list`);
+        if (res.ok) {
+          const data = await res.json();
+          setRecordingFiles(data.files ?? []);
+          const inProgress = data.recording ?? null;
+          setRecordingInProgress(inProgress);
+          setRecording(!!inProgress);
+        }
+      } catch (e) {
+        console.warn("recording list fetch failed:", e);
+      }
+    };
+    fetchList();
+    const timer = window.setInterval(fetchList, 2000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const postBinThreshold = async (value: number) => {
@@ -521,7 +603,78 @@ const ParameterSetter: React.FC = () => {
     <div>
       <h3>Image Processing Parameters</h3>
 
-      <div style={sectionBlockStyle}>
+      <div style={{ ...sectionBlockStyle, marginTop: 12 }}>
+        <div
+          style={{
+            ...sectionHeaderStyle,
+            background: hoveredSection === "recording" ? "#f0f0f0" : "transparent",
+          }}
+          onClick={() => setRecordingOpen((v) => !v)}
+          onMouseEnter={() => setHoveredSection("recording")}
+          onMouseLeave={() => setHoveredSection(null)}
+          role="button"
+          tabIndex={0}
+        >
+          <svg style={chevronStyle(recordingOpen)} viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <h4 style={{ margin: 0 }}>Recording</h4>
+        </div>
+
+        {recordingOpen && (
+          <div style={sectionBodyStyle}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ fontFamily: "monospace", fontSize: 14 }}>Recording</div>
+              <button
+                type="button"
+                onClick={() => (recording ? stopRecording() : startRecording())}
+                style={{
+                  width: 120,
+                  height: 36,
+                  padding: "6px 8px",
+                  boxSizing: "border-box",
+                  borderRadius: 6,
+                  border: recording ? "1px solid #ff8080" : "1px solid #ccc",
+                  background: recording ? "#ffb3b3" : "#fff",
+                  color: "#000",
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                }}
+              >
+                {recording ? "Stop" : "Start"}
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12 }}>
+              <select
+                value={selectedRecordingFile}
+                onChange={(e) => setSelectedRecordingFile(e.target.value)}
+                style={{ width: 220 }}
+              >
+                {recordingInProgress && (
+                  <option value="" disabled>
+                    *{recordingInProgress}
+                  </option>
+                )}
+                {recordingFiles.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => downloadRecordingFile(selectedRecordingFile)}
+                disabled={!selectedRecordingFile}
+                style={{ width: 100 }}
+              >
+                Download
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ ...sectionBlockStyle, marginTop: 12 }}>
         <div
           style={{
             ...sectionHeaderStyle,
@@ -580,7 +733,7 @@ const ParameterSetter: React.FC = () => {
         )}
       </div>
 
-      <div style={{ ...sectionBlockStyle, marginTop: 16 }}>
+      <div style={{ ...sectionBlockStyle, marginTop: 12 }}>
         <div
           style={{
             ...sectionHeaderStyle,
@@ -613,7 +766,7 @@ const ParameterSetter: React.FC = () => {
         )}
       </div>
 
-      <div style={{ ...sectionBlockStyle, marginTop: 16 }}>
+      <div style={{ ...sectionBlockStyle, marginTop: 12 }}>
         <div
           style={{
             ...sectionHeaderStyle,
@@ -741,7 +894,7 @@ const ParameterSetter: React.FC = () => {
         )}
       </div>
 
-      <div style={{ ...sectionBlockStyle, marginTop: 16 }}>
+      <div style={{ ...sectionBlockStyle, marginTop: 12 }}>
         <div
           style={{
             ...sectionHeaderStyle,
