@@ -4,7 +4,11 @@ import threading
 import time
 from typing import Dict, Optional, Tuple
 
+import os
+os.environ["MAVLINK20"] = "1"
+os.environ["MAVLINK_DIALECT"] = "common"
 from pymavlink import mavutil
+from pymavlink.dialects.v20 import common as mavlink2
 
 
 class DroneState:
@@ -91,7 +95,7 @@ class MavlinkClient:
         self._sock.bind(("0.0.0.0", self.local_port))
         self._sock.settimeout(float(rx_timeout_sec))
 
-        self._mav = mavutil.mavlink.MAVLink(self)
+        self._mav = mavlink2.MAVLink(self)
         self._mav.srcSystem = self.my_sysid
         self._mav.srcComponent = self.my_compid
 
@@ -214,6 +218,8 @@ class MavlinkClient:
             vals = (x, y, z, w, qx, qy, qz)
             if not all(math.isfinite(v) for v in vals):
                 return
+            
+            # print(f"Received ODOMETRY: pos=({x:.2f}, {y:.2f}, {z:.2f}) quat=({qx:.3f}, {qy:.3f}, {qz:.3f}, {w:.3f})")
 
             self.px4_raw_pos = [x, y, z]
             self.px4_raw_quat = [qx, qy, qz, w]
