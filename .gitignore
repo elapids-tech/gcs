@@ -1,5 +1,6 @@
 # this project specifically ignore files
 backend/test/output
+backend/recordings
 
 *.bkp
 *.dtmp
