@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { Grid, Line, GizmoHelper, GizmoViewport, OrbitControls, Environment, Sphere } from '@react-three/drei';
 import { DroneConfigurationPage } from './features/droneConfiguration';
-import Split from 'react-split';
 import './styles.css';
 
 
@@ -234,7 +233,56 @@ export const DroneControlPanel: React.FC = () => {
 
 
 function MainLayout() {
-  const [activeTab, setActiveTab] = useState<'preview' | 'config'>('preview');
+  const [activeTab, setActiveTab] = useState<'preview' | 'config' | 'flight'>('preview');
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
+  const initialRightWidth = 320;
+  const [leftWidth, setLeftWidth] = useState<number>(900);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isSplitterHovered, setIsSplitterHovered] = useState<boolean>(false);
+
+  const minLeft = 480;
+  const minRight = 280;
+  const splitterWidth = 4;
+  const splitterGap = 5;
+
+  useEffect(() => {
+    if (activeTab !== 'preview' || !previewContainerRef.current) return;
+
+    const rect = previewContainerRef.current.getBoundingClientRect();
+    const maxLeft = Math.max(
+      minLeft,
+      rect.width - minRight - splitterWidth - splitterGap * 2
+    );
+    const desiredLeft = rect.width - initialRightWidth - splitterWidth - splitterGap * 2;
+    const nextLeft = Math.min(Math.max(desiredLeft, minLeft), maxLeft);
+    setLeftWidth(nextLeft);
+  }, [activeTab, initialRightWidth, minLeft, minRight]);
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!isDragging || !previewContainerRef.current) return;
+
+      const rect = previewContainerRef.current.getBoundingClientRect();
+      const maxLeft = Math.max(
+        minLeft,
+        rect.width - minRight - splitterWidth - splitterGap * 2
+      );
+      const nextLeft = Math.min(Math.max(event.clientX - rect.left, minLeft), maxLeft);
+      setLeftWidth(nextLeft);
+    };
+
+    const handlePointerUp = () => {
+      if (isDragging) setIsDragging(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [isDragging, minLeft, minRight]);
 
   return (
     <div className="main-layout">
@@ -252,28 +300,71 @@ function MainLayout() {
         >
           Drone Configuration
         </button>
+        <button
+          className={activeTab === 'flight' ? 'active' : ''}
+          onClick={() => setActiveTab('flight')}
+        >
+          Flight Area
+        </button>
       </div>
 
       {/* メイン画面 */}
       <div className="main-content">
         {activeTab === 'preview' ? (
-          <Split
+          <div
+            ref={previewContainerRef}
             className="split"
-            sizes={[70, 30]}
-            minSize={300}
-            gutterSize={10}
-            direction="horizontal"
+            style={{ display: 'flex', gap: 0, height: '100%' }}
           >
-            <div className="pane pane-left">
+            <div
+              className="pane pane-left"
+              style={{
+                width: leftWidth,
+                minWidth: minLeft,
+                marginRight: splitterGap,
+                overflow: 'hidden',
+              }}
+            >
               <Viewer3d />
             </div>
-            <div className="pane pane-right">
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              onPointerEnter={() => setIsSplitterHovered(true)}
+              onPointerLeave={() => setIsSplitterHovered(false)}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+                event.currentTarget.setPointerCapture(event.pointerId);
+              }}
+              style={{
+                width: splitterWidth,
+                cursor: 'col-resize',
+                background: isSplitterHovered
+                  ? '#e5e7eb'
+                  : 'linear-gradient(90deg, transparent 0, transparent 1px, #d1d5db 1px, #d1d5db 2px, transparent 2px)',
+              }}
+            />
+            <div
+              className="pane pane-right"
+              style={{
+                flex: 1,
+                minWidth: minRight,
+                marginLeft: splitterGap,
+                overflow: 'hidden',
+              }}
+            >
               <DroneControlPanel />
             </div>
-          </Split>
-        ) : (
+          </div>
+        ) : activeTab === 'config' ? (
           <div className="config-panel">
             <DroneConfigurationPage />
+          </div>
+        ) : (
+          <div className="config-panel">
+            <h2>Flight Area</h2>
+            <p>Coming soon.</p>
           </div>
         )}
       </div>
