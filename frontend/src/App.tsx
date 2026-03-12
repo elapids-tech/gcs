@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { Grid, Line, GizmoHelper, GizmoViewport, OrbitControls, Environment, Sphere } from '@react-three/drei';
 import { DroneConfigurationPage } from './features/droneConfiguration';
+import { FlightAreaPage } from './features/flightArea';
 import './styles.css';
 
 
@@ -362,10 +363,7 @@ function MainLayout() {
             <DroneConfigurationPage />
           </div>
         ) : (
-          <div className="config-panel">
-            <h2>Flight Area</h2>
-            <p>Coming soon.</p>
-          </div>
+          <FlightAreaPage />
         )}
       </div>
     </div>
