@@ -21,6 +21,7 @@ from starlette.websockets import WebSocketDisconnect, WebSocketState
 from backend.mavlink_client import MavlinkClient
 from backend.camera_calibration import CameraCalibration
 from backend.video_recorder import VideoRecorder
+from backend.flight_area import router as flight_area
 
 try:
     from uvicorn.protocols.utils import ClientDisconnected
@@ -93,6 +94,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(flight_area)
 
 manager = ConnectionManager()
 
