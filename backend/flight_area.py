@@ -5,7 +5,6 @@ import urllib.request
 from fastapi import APIRouter
 
 flight_area = APIRouter(prefix="/flight-area", tags=["flight-area"])
-router = flight_area
 
 
 @flight_area.get("/health")

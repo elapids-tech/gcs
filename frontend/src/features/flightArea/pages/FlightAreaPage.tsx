@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const API_BASE_URL = 'http://localhost:8003';
 
@@ -12,6 +12,22 @@ const FlightAreaPage: React.FC = () => {
     padding: '0px 10px',
     boxSizing: 'border-box',
   };
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/app-setting/network/flight-area-build-server`);
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.status === 'ok') {
+          setSfmIp(String(data?.ip ?? ''));
+          setSfmPort(String(data?.port ?? ''));
+        }
+      } catch {
+        // Ignore load errors.
+      }
+    };
+    loadSettings();
+  }, []);
 
   return (
     <div className="config-panel" style={pageStyle}>
@@ -86,6 +102,24 @@ const FlightAreaPage: React.FC = () => {
             >
               {checkMessage}
             </span>
+            <button
+              type="button"
+              onClick={async () => {
+                const ip = sfmIp.trim();
+                const port = sfmPort.trim();
+                if (!ip || !port) {
+                  return;
+                }
+
+                const query = `ip=${encodeURIComponent(ip)}&port=${encodeURIComponent(port)}`;
+                await fetch(`${API_BASE_URL}/app-setting/network/flight-area-build-server?${query}`, {
+                  method: 'POST',
+                });
+              }}
+              style={{ padding: '4px 8px', fontSize: 12 }}
+            >
+              Save
+            </button>
           </div>
         </div>
       </div>
