@@ -13,6 +13,33 @@ const FlightAreaPage: React.FC = () => {
     boxSizing: 'border-box',
   };
 
+  const controlStyle: React.CSSProperties = {
+    height: 24,
+    padding: '0 8px',
+    fontSize: 12,
+    lineHeight: '24px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxSizing: 'border-box',
+  };
+
+  const projectLabelWidth = 120;
+  const projectControlWidth = 220;
+
+  const labelTextStyle: React.CSSProperties = {
+    width: projectLabelWidth,
+    whiteSpace: 'nowrap',
+  };
+
+  const projectRowStyle: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: `${projectLabelWidth}px ${projectControlWidth}px auto`,
+    columnGap: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  };
+
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -33,7 +60,7 @@ const FlightAreaPage: React.FC = () => {
     <div className="config-panel" style={pageStyle}>
       <h2>Flight Area</h2>
       <div style={{ maxWidth: 480 }}>
-        <h3>sfm server</h3>
+        <h3>Server Setting</h3>
         <div style={{ display: 'flex', gap: 20, justifyContent: 'flex-start', alignItems: 'center' }}>
           <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span>IP</span>
@@ -42,6 +69,7 @@ const FlightAreaPage: React.FC = () => {
               placeholder="127.0.0.1"
               value={sfmIp}
               onChange={(e) => setSfmIp(e.target.value)}
+              style={controlStyle}
             />
           </label>
 
@@ -55,6 +83,7 @@ const FlightAreaPage: React.FC = () => {
                 onChange={(e) => setSfmPort(e.target.value)}
                 min={1}
                 max={65535}
+                style={controlStyle}
               />
             </label>
             <button
@@ -89,7 +118,7 @@ const FlightAreaPage: React.FC = () => {
                 }
               }}
               disabled={checkStatus === 'checking'}
-              style={{ padding: '4px 8px', fontSize: 12 }}
+              style={controlStyle}
             >
               Check
             </button>
@@ -116,11 +145,45 @@ const FlightAreaPage: React.FC = () => {
                   method: 'POST',
                 });
               }}
-              style={{ padding: '4px 8px', fontSize: 12 }}
+              style={controlStyle}
             >
               Save
             </button>
           </div>
+        </div>
+        <h3>Project</h3>
+        <div style={projectRowStyle}>
+          <span style={labelTextStyle}>Create Project</span>
+          <input
+            type="text"
+            placeholder="Enter the project name."
+            style={{ ...controlStyle, width: projectControlWidth }}
+          />
+          <button type="button" style={controlStyle}>
+            Create
+          </button>
+        </div>
+        <div style={projectRowStyle}>
+          <span style={labelTextStyle}>Select Project</span>
+          <select defaultValue="" style={{ ...controlStyle, width: projectControlWidth }}>
+            <option value="" disabled>
+              -- Select a Project --
+            </option>
+          </select>
+          <span />
+        </div>
+        <div style={{ borderTop: '1px solid #ddd', margin: '8px 0' }} />
+        <div style={projectRowStyle}>
+          <span style={labelTextStyle}>Build</span>
+          <span />
+          <button type="button" style={controlStyle}>
+            Run
+          </button>
+        </div>
+        <div style={projectRowStyle}>
+          <span style={labelTextStyle}>Meshroom Process State</span>
+          <span style={{ ...controlStyle, width: projectControlWidth, justifyContent: 'flex-start' }} />
+          <span />
         </div>
       </div>
     </div>
