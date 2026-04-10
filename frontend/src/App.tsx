@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { Grid, Line, GizmoHelper, GizmoViewport, OrbitControls, Environment, Sphere } from '@react-three/drei';
-import { DroneConfigurationPage } from './features/droneConfiguration';
+import { CameraSettingsPage } from './features/cameraSettings';
 import { FlightAreaPage } from './features/flightArea';
 import './styles.css';
 
@@ -299,7 +299,7 @@ function MainLayout() {
           className={activeTab === 'config' ? 'active' : ''}
           onClick={() => setActiveTab('config')}
         >
-          Drone Configuration
+          Camera Settings
         </button>
         <button
           className={activeTab === 'flight' ? 'active' : ''}
@@ -360,7 +360,7 @@ function MainLayout() {
           </div>
         ) : activeTab === 'config' ? (
           <div className="config-panel">
-            <DroneConfigurationPage />
+            <CameraSettingsPage />
           </div>
         ) : (
           <FlightAreaPage />

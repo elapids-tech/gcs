@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import CameraFrameViewer from "../components/CameraFrameViewer";
 import ParameterSetter from "../components/ParameterSetter";
 
-const DroneConfigurationPage: React.FC = () => {
+const CameraSettingsPage: React.FC = () => {
   const hbTimerRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [leftWidth, setLeftWidth] = useState<number>(900);
@@ -107,4 +107,4 @@ const DroneConfigurationPage: React.FC = () => {
   );
 };
 
-export default DroneConfigurationPage;
+export default CameraSettingsPage;
