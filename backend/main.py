@@ -331,6 +331,35 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.close()
 
 
+# Camera Setting Mode API
+
+@app.post("/camera-setting-mode/request-drone-camera-parameters")
+async def request_drone_camera_parameters():
+    requested = mavlink_client.request_all_camera_settings_parameters()
+    parameters = mavlink_client.get_camera_settings_parameters()
+    print("debug: got camera parameters from drone:", parameters)
+    return {"status": "ok", "requested": requested, "parameters": parameters}
+
+
+@app.post("/camera-setting-mode/set-bin-threshold")
+async def set_bin_threshold(threshold: int):
+    """2値化の閾値を設定する。"""
+    if not (-1 <= threshold <= 255):
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": "Threshold must be between -1 and 255."},
+        )
+
+    ok = mavlink_client.send_bin_threshold_parameter(threshold)
+    if not ok:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": "Failed to set bin threshold."},
+        )
+
+    return {"status": "ok", "message": f"Binary threshold set to {threshold}."}
+
+
 @app.post("/recording/start")
 async def start_recording():
     info = rec.start()
@@ -416,25 +445,6 @@ async def video_stream(websocket: WebSocket):
             await websocket.close()
 
 
-@app.post("/config-mode/set-bin-threshold")
-async def set_bin_threshold(threshold: int):
-    """
-    2値化の閾値を設定
-    Args:
-        threshold (int): 2値化の閾値 (-1: 二値化処理無効, 0-255: 閾値)
-    Returns:
-        JSONResponse: result 
-    """
-    if not (-1 <= threshold <= 255):
-        return JSONResponse(
-            status_code=400,
-            content={"status": "error", "message": "Threshold must be between -1 and 255."},
-        )
-    
-    mavlink_client.send_bin_threshold_parameter(threshold)
-    return {"status": "ok", "message": f"Binary threshold set to {threshold}."}
-
-
 _CAMERA_CONTROL_RANGES = {
     "brightness": (-64, 64),
     "contrast": (0, 95),
@@ -468,7 +478,7 @@ def _send_camera_control(name: str, value: int) -> bool:
         return bool(mavlink_client.send_sharpness_parameter(value))
     return False
 
-@app.post("/config-mode/set-camera-control")
+@app.post("/camera-setting-mode/set-camera-control")
 async def set_camera_control(name: str, value: int):
     """
     カメラ設定を一括で設定
@@ -503,20 +513,21 @@ async def set_camera_control(name: str, value: int):
     return {"status": "ok", "message": f"{name} set to {value}."}
 
 
-@app.get("/config-mode/read-bin-threshold-on-drone")
+@app.get("/camera-setting-mode/read-bin-threshold-on-drone")
 async def get_bin_threshold():
     """ドローンに設定されている2値化閾値を取得する"""
+    mavlink_client.send_bin_threshold_param_request_read()
     threshold = mavlink_client.get_bin_threshold_parameter()
     return {"status": "ok", "bin_threshold": threshold}
 
 
-@app.post("/config-mode/keep-alive")
-def send_enable_config_mode_signal():
-    mavlink_client.set_config_mode_signal()
+@app.post("/camera-setting-mode/keep-alive")
+def send_enable_camera_setting_mode_signal():
+    mavlink_client.set_camera_setting_mode_signal()
     return {"status": "ok"}
 
 
-@app.post("/config-mode/camera-calibration/start")
+@app.post("/camera-setting-mode/camera-calibration/start")
 async def start_camera_calibration(camera: int = 0):
     global camera_0_allow_grid_pts_registration, camera_1_allow_grid_pts_registration
     if camera == 0:
@@ -545,7 +556,7 @@ async def start_camera_calibration(camera: int = 0):
     return {"status": "ok", "running": True, "camera": camera}
 
 
-@app.post("/config-mode/camera-calibration/stop")
+@app.post("/camera-setting-mode/camera-calibration/stop")
 async def stop_camera_calibration(camera: int = 0):
     global camera_0_allow_grid_pts_registration, camera_1_allow_grid_pts_registration
     camera_0_allow_grid_pts_registration = False
@@ -555,12 +566,12 @@ async def stop_camera_calibration(camera: int = 0):
     return {"status": "ok", "running": camera_0_allow_grid_pts_registration or camera_1_allow_grid_pts_registration}
 
 
-@app.get("/config-mode/camera-calibration/status")
+@app.get("/camera-setting-mode/camera-calibration/status")
 def camera_calibration_status():
     return {"status": "ok", "running": camera_0_allow_grid_pts_registration or camera_1_allow_grid_pts_registration}
 
 
-@app.post("/config-mode/camera-calibration/execute-calibration")
+@app.post("/camera-setting-mode/camera-calibration/execute-calibration")
 async def execute_camera_calibration(camera: int = 0, lens_type: str = "fisheye"):
     global camera_0_allow_grid_pts_registration, camera_1_allow_grid_pts_registration
 
@@ -616,7 +627,7 @@ async def execute_camera_calibration(camera: int = 0, lens_type: str = "fisheye"
     return {"status": "ok", "camera": camera, "running": True}
 
 
-@app.get("/config-mode/camera-calibration/execute-status")
+@app.get("/camera-setting-mode/camera-calibration/execute-status")
 def get_execute_calibration_status(camera: int = 0):
     if camera not in (0, 1):
         return JSONResponse(
@@ -642,7 +653,7 @@ def get_execute_calibration_status(camera: int = 0):
     }
 
 
-@app.get("/config-mode/camera-calibration/download")
+@app.get("/camera-setting-mode/camera-calibration/download")
 def download_camera_calibration(camera: int = 0):
     if calibration_execute_status.get(camera, {}).get("running"):
         return JSONResponse(
@@ -674,7 +685,7 @@ def download_camera_calibration(camera: int = 0):
     )
 
 
-@app.post("/config-mode/camera-calibration/save-to-drone")
+@app.post("/camera-setting-mode/camera-calibration/save-to-drone")
 def save_calibration_to_drone(camera: int = 0):
     if camera == 0:
         result = cc_0.get_result()
@@ -690,7 +701,7 @@ def save_calibration_to_drone(camera: int = 0):
     return {"status": "ok"}
 
 
-@app.post("/config-mode/camera-calibration/reset-calibration-data")
+@app.post("/camera-setting-mode/camera-calibration/reset-calibration-data")
 async def reset_calibration_data(camera: int = 0):
     if camera not in (0, 1):
         return JSONResponse(

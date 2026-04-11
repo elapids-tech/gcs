@@ -34,6 +34,18 @@ const INCLUDE_GAIN_DEFAULT = 3.2;
 const SECTION_MAX_WIDTH = 360;
 const CALIBRATION_POLL_MS = 2000;
 
+const PARAM_ID_TO_CAMERA_KEY: Partial<Record<string, CameraControlKey>> = {
+  CAM_BRIGHT: "brightness",
+  CAM_CONT: "contrast",
+  CAM_SAT: "saturation",
+  CAM_HUE: "hue",
+  CAM_GAM: "gamma",
+  CAM_GAIN: "gain",
+  CAM_WBT: "white_balance_temperature",
+  CAM_SHARP: "sharpness",
+  CAM_EXP: "exposure_time_absolute",
+};
+
 const CAMERA_SPECS: Record<CameraControlKey, CameraControlSpec> = {
   brightness: { apiName: "brightness", label: "brightness", min: -64, max: 64, step: 1, def: 0 },
   contrast: { apiName: "contrast", label: "contrast", min: 0, max: 95, step: 1, def: 50 },
@@ -67,6 +79,7 @@ const ParameterSetter: React.FC = () => {
   const [cameraCalibrationOpen, setCameraCalibrationOpen] = useState<boolean>(false);
   const [landmarkSettingsOpen, setLandmarkSettingsOpen] = useState<boolean>(false);
   const [hoveredSection, setHoveredSection] = useState<"threshold" | "camera" | "calibration" | "landmark" | "recording" | null>(null);
+  const [loadingDroneParams, setLoadingDroneParams] = useState<boolean>(false);
   const [recording, setRecording] = useState<boolean>(false);
   const [recordingOpen, setRecordingOpen] = useState<boolean>(false);
   const [recordingFiles, setRecordingFiles] = useState<string[]>([]);
@@ -112,18 +125,53 @@ const ParameterSetter: React.FC = () => {
   const executeError = executeErrorByCamera[selectedCamera] ?? null;
   const registeredCount = registeredCounts[selectedCamera] ?? 0;
 
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/config-mode/get-bin-threshold`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch threshold");
-        return res.json();
-      })
-      .then((data) => {
-        if (typeof data.bin_threshold === "number") {
-          setThreshold(data.bin_threshold);
+  const loadDroneCameraParameters = async () => {
+    setLoadingDroneParams(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/camera-setting-mode/request-drone-camera-parameters`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to request camera parameters: ${res.status}`);
+      }
+
+      const data = await res.json();
+      const parameters = data?.parameters;
+      if (!parameters || typeof parameters !== "object") {
+        return;
+      }
+
+      const thresholdValue = parameters.BIN_TH;
+      if (typeof thresholdValue === "number" && Number.isFinite(thresholdValue)) {
+        setThreshold(Math.round(thresholdValue));
+      }
+
+      const updates: Partial<CameraControlsState> = {};
+      Object.entries(parameters).forEach(([paramId, rawValue]) => {
+        const key = PARAM_ID_TO_CAMERA_KEY[paramId];
+        if (!key) {
+          return;
         }
-      })
-      .catch((e) => console.warn("しきい値の取得失敗:", e));
+        if (typeof rawValue !== "number" || !Number.isFinite(rawValue)) {
+          return;
+        }
+        updates[key] = Math.round(rawValue);
+      });
+
+      if (Object.keys(updates).length > 0) {
+        setCamera((prev) => ({ ...prev, ...updates }));
+      }
+    } catch (e) {
+      console.warn("ドローンパラメータの取得失敗:", e);
+    } finally {
+      setLoadingDroneParams(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDroneCameraParameters().catch((e) =>
+      console.warn("ドローンパラメータの初期取得失敗:", e)
+    );
   }, []);
 
   useEffect(() => {
@@ -163,18 +211,18 @@ const ParameterSetter: React.FC = () => {
   }, []);
 
   const startCalibration = async (cameraId: string) => {
-    await fetch(`${API_BASE_URL}/config-mode/camera-calibration/start?camera=${encodeURIComponent(cameraId)}`,
+    await fetch(`${API_BASE_URL}/camera-setting-mode/camera-calibration/start?camera=${encodeURIComponent(cameraId)}`,
       { method: "POST" }
     );
   };
 
   const stopCalibration = async () => {
-    await fetch(`${API_BASE_URL}/config-mode/camera-calibration/stop`, { method: "POST" });
+    await fetch(`${API_BASE_URL}/camera-setting-mode/camera-calibration/stop`, { method: "POST" });
   };
 
   const executeCalibration = async () => {
     const res = await fetch(
-      `${API_BASE_URL}/config-mode/camera-calibration/execute-calibration?camera=${encodeURIComponent(calibrationCamera)}&lens_type=${encodeURIComponent(calibrationLensType)}`,
+      `${API_BASE_URL}/camera-setting-mode/camera-calibration/execute-calibration?camera=${encodeURIComponent(calibrationCamera)}&lens_type=${encodeURIComponent(calibrationLensType)}`,
       { method: "POST" }
     );
     if (!res.ok) {
@@ -190,7 +238,7 @@ const ParameterSetter: React.FC = () => {
 
   const downloadCalibration = async () => {
     const res = await fetch(
-      `${API_BASE_URL}/config-mode/camera-calibration/download?camera=${encodeURIComponent(calibrationCamera)}`
+      `${API_BASE_URL}/camera-setting-mode/camera-calibration/download?camera=${encodeURIComponent(calibrationCamera)}`
     );
     if (!res.ok) {
       let message = "Calibration result not found.";
@@ -283,7 +331,7 @@ const ParameterSetter: React.FC = () => {
 
   const resetCalibration = async () => {
     const res = await fetch(
-      `${API_BASE_URL}/config-mode/camera-calibration/reset-calibration-data?camera=${encodeURIComponent(calibrationCamera)}`,
+      `${API_BASE_URL}/camera-setting-mode/camera-calibration/reset-calibration-data?camera=${encodeURIComponent(calibrationCamera)}`,
       { method: "POST" }
     );
     if (!res.ok) {
@@ -302,7 +350,7 @@ const ParameterSetter: React.FC = () => {
   };
 
   const getCalibrationStatus = async () => {
-    const res = await fetch(`${API_BASE_URL}/config-mode/camera-calibration/status`);
+    const res = await fetch(`${API_BASE_URL}/camera-setting-mode/camera-calibration/status`);
     if (!res.ok) {
       throw new Error("Failed to fetch calibration status");
     }
@@ -311,7 +359,7 @@ const ParameterSetter: React.FC = () => {
 
   const getExecuteStatus = async (cameraId: number) => {
     const res = await fetch(
-      `${API_BASE_URL}/config-mode/camera-calibration/execute-status?camera=${encodeURIComponent(String(cameraId))}`
+      `${API_BASE_URL}/camera-setting-mode/camera-calibration/execute-status?camera=${encodeURIComponent(String(cameraId))}`
     );
     if (!res.ok) {
       throw new Error("Failed to fetch execute status");
@@ -422,7 +470,7 @@ const ParameterSetter: React.FC = () => {
   }, []);
 
   const postBinThreshold = async (value: number) => {
-    await fetch(`${API_BASE_URL}/config-mode/set-bin-threshold?threshold=${value}`, {
+    await fetch(`${API_BASE_URL}/camera-setting-mode/set-bin-threshold?threshold=${value}`, {
       method: "POST",
     });
   };
@@ -430,7 +478,7 @@ const ParameterSetter: React.FC = () => {
   const postCameraControl = async (key: CameraControlKey, value: number) => {
     const apiName = CAMERA_SPECS[key].apiName;
     await fetch(
-      `${API_BASE_URL}/config-mode/set-camera-control?name=${encodeURIComponent(apiName)}&value=${value}`,
+      `${API_BASE_URL}/camera-setting-mode/set-camera-control?name=${encodeURIComponent(apiName)}&value=${value}`,
       { method: "POST" }
     );
   };
@@ -602,6 +650,11 @@ const ParameterSetter: React.FC = () => {
   return (
     <div>
       <h3>Image Processing Parameters</h3>
+      <div style={{ ...sectionBlockStyle, marginTop: 8, marginBottom: 6 }}>
+        <button type="button" onClick={loadDroneCameraParameters} disabled={loadingDroneParams}>
+          {loadingDroneParams ? "Loading..." : "Reload From Drone"}
+        </button>
+      </div>
 
       <div style={{ ...sectionBlockStyle, marginTop: 12 }}>
         <div

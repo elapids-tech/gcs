@@ -16,7 +16,13 @@ const CameraSettingsPage: React.FC = () => {
 
   useEffect(() => {
     const BACKEND_HTTP = "http://localhost:8003";
-    const KEEP_ALIVE_ENDPOINT = `${BACKEND_HTTP}/config-mode/keep-alive`;
+    const REQUEST_PARAMS_ENDPOINT = `${BACKEND_HTTP}/camera-setting-mode/request-drone-camera-parameters`;
+    const KEEP_ALIVE_ENDPOINT = `${BACKEND_HTTP}/camera-setting-mode/keep-alive`;
+
+    // ページ表示時に、ドローン側のカメラパラメータ送信を要求
+    fetch(REQUEST_PARAMS_ENDPOINT, { method: "POST" }).catch((e) =>
+      console.warn("request-drone-camera-parameters 送信失敗:", e)
+    );
 
     // 初回送信
     fetch(KEEP_ALIVE_ENDPOINT, { method: "POST" }).catch((e) =>

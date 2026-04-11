@@ -49,8 +49,11 @@ class MavlinkClient:
         Socket recv timeout (stop responsiveness).
     """
 
-    MAV_CMD_MY_APP_SET_CONFIG_MODE = 31000
-    MAV_CMD_MY_APP_VIDEO_STREAMING_MODE = 31001
+    # drone mode control command (custom MAVLink command, not standard)
+    MAV_CMD_APP_SET_IDLE_MODE = 31000
+    MAV_CMD_APP_SET_POSE_ESTIMATION_MODE = 31001
+    MAV_CMD_APP_SET_PARAMETER_SETTING_MODE = 31002
+    MAV_CMD_APP_SET_CAMERA_SETTING_MODE = 31003
 
     PARAM_BIN_THRESHOLD = "BIN_TH"
     PARAM_BRIGHTNESS = "CAM_BRIGHT"
@@ -63,6 +66,19 @@ class MavlinkClient:
     PARAM_SHARPNESS = "CAM_SHARP"
     PARAM_EXPOSURE_ABS = "CAM_EXP"
     PARAM_FPS = "CAM_FPS"
+
+    CAMERA_SETTING_PARAM_IDS = (
+        PARAM_BIN_THRESHOLD,
+        PARAM_BRIGHTNESS,
+        PARAM_CONTRAST,
+        PARAM_SATURATION,
+        PARAM_HUE,
+        PARAM_GAMMA,
+        PARAM_GAIN,
+        PARAM_WB_TEMP,
+        PARAM_SHARPNESS,
+        PARAM_EXPOSURE_ABS,
+    )
 
     def __init__(
         self,
@@ -108,6 +124,11 @@ class MavlinkClient:
         self._param_lock = threading.Lock()
         self._param_cv = threading.Condition(self._param_lock)
         self._params: Dict[str, float] = {}
+        self._param_update_seq: Dict[str, int] = {}
+
+        self._camera_settings_request_lock = threading.Lock()
+        self._camera_settings_request_min_interval_sec = 2.0
+        self._last_camera_settings_request_sent_at = 0.0
 
         self._heartbeat_interval = 1.0 / max(float(heartbeat_hz), 0.1)
 
@@ -118,15 +139,17 @@ class MavlinkClient:
         self._threads.append(t1)
         self._threads.append(t2)
 
+    def __del__(self):
+        try:
+            self.stop()
+        except Exception:
+            pass
+
     def write(self, b: bytes) -> int:
         try:
             return self._sock.sendto(b, self._dest)
         except Exception:
             return 0
-
-    def _log(self, s: str) -> None:
-        if self._enable_stdout_log:
-            print(s)
 
     def stop(self) -> None:
         self._running = False
@@ -137,11 +160,176 @@ class MavlinkClient:
         except Exception:
             pass
 
-    def __del__(self):
+    def set_idle_mode_signal(self) -> None:
         try:
-            self.stop()
+            self._mav.command_long_send(
+                self.target_sysid,
+                self.target_compid,
+                self.MAV_CMD_APP_SET_IDLE_MODE,
+                0,
+                1, 0, 0, 0, 0, 0, 0,
+            )
         except Exception:
             pass
+
+    # Camera setting mode 
+
+    def set_camera_setting_mode_signal(self) -> None:
+        try:
+            self._mav.command_long_send(
+                self.target_sysid,
+                self.target_compid,
+                self.MAV_CMD_APP_SET_CAMERA_SETTING_MODE,
+                0,
+                1, 0, 0, 0, 0, 0, 0,
+            )
+        except Exception:
+            pass
+
+    def send_bin_threshold_parameter(self, threshold: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_BIN_THRESHOLD, threshold, timeout_sec)
+
+    def send_brightness_parameter(self, brightness: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_BRIGHTNESS, brightness, timeout_sec)
+
+    def send_contrast_parameter(self, contrast: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_CONTRAST, contrast, timeout_sec)
+
+    def send_saturation_parameter(self, saturation: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_SATURATION, saturation, timeout_sec)
+
+    def send_hue_parameter(self, hue: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_HUE, hue, timeout_sec)
+
+    def send_gamma_parameter(self, gamma: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_GAMMA, gamma, timeout_sec)
+
+    def send_gain_parameter(self, gain: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_GAIN, gain, timeout_sec)
+
+    def send_white_balance_temperature_parameter(self, wb_temp: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_WB_TEMP, wb_temp, timeout_sec)
+
+    def send_sharpness_parameter(self, sharpness: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_SHARPNESS, sharpness, timeout_sec)
+
+    def send_exposure_time_absolute_parameter(self, exposure_abs: int, timeout_sec: float = 2.0) -> bool:
+        return self._send_int32_param(self.PARAM_EXPOSURE_ABS, exposure_abs, timeout_sec)
+
+    def request_all_camera_settings_parameters(self, timeout_sec: float = 2.0) -> bool:
+        """Request all camera setting parameters from the drone.
+
+        This method sends PARAM_REQUEST_READ for each camera-related parameter and
+        waits for corresponding PARAM_VALUE updates. Calls are throttled to avoid
+        excessive request bursts.
+
+        Args:
+            timeout_sec: Total timeout budget in seconds for this bulk request.
+
+        Returns:
+            True if all parameter read requests received updated PARAM_VALUE within
+            each per-parameter timeout, otherwise False.
+        """
+        now = time.monotonic()
+        with self._camera_settings_request_lock:
+            elapsed = now - self._last_camera_settings_request_sent_at
+            if elapsed < self._camera_settings_request_min_interval_sec:
+                self._log(
+                    "[tx-skip] camera settings parameter request throttled "
+                    f"({elapsed:.3f}s < {self._camera_settings_request_min_interval_sec:.3f}s)"
+                )
+                return False
+
+            self._last_camera_settings_request_sent_at = now
+
+        per_timeout = max(0.2, float(timeout_sec) / len(self.CAMERA_SETTING_PARAM_IDS))
+        ok = True
+        for pid in self.CAMERA_SETTING_PARAM_IDS:
+            if not self._request_param_read(pid, per_timeout):
+                ok = False
+        return ok
+
+    def _request_param_read(self, param_id: str, timeout_sec: float = 2.0) -> bool:
+        """Send PARAM_REQUEST_READ and wait for a new PARAM_VALUE update.
+
+        Args:
+            param_id: Parameter ID to request.
+            timeout_sec: Maximum time to wait for the requested parameter update.
+
+        Returns:
+            True when a newer PARAM_VALUE for ``param_id`` is observed, otherwise
+            False on timeout or send failure.
+        """
+        key = str(param_id).strip()
+        if not key:
+            return False
+
+        with self._param_cv:
+            prev_seq = self._param_update_seq.get(key, 0)
+
+        try:
+            self._mav.param_request_read_send(
+                self.target_sysid,
+                self.target_compid,
+                key.encode("ascii"),
+                -1,
+            )
+        except Exception:
+            return False
+
+        deadline = time.monotonic() + max(0.0, float(timeout_sec))
+        with self._param_cv:
+            while True:
+                if self._param_update_seq.get(key, 0) > prev_seq:
+                    return True
+
+                remain = deadline - time.monotonic()
+                if remain <= 0.0:
+                    return False
+
+                self._param_cv.wait(timeout=remain)
+
+    def get_bin_threshold_parameter(self) -> Optional[int]:
+        """Return cached BIN_TH value as an integer.
+
+        This method does not send MAVLink requests. Use
+        ``send_bin_threshold_param_request_read`` beforehand when a refresh is
+        required.
+        """
+        val = self.get_param_cached(self.PARAM_BIN_THRESHOLD)
+        if val is None or not math.isfinite(val):
+            return None
+        return int(round(val))
+
+    def send_bin_threshold_param_request_read(self, timeout_sec: float = 2.0) -> bool:
+        return self._request_param_read(self.PARAM_BIN_THRESHOLD, timeout_sec)
+
+    def send_brightness_param_request_read(self, timeout_sec: float = 2.0) -> bool:
+        return self._request_param_read(self.PARAM_BRIGHTNESS, timeout_sec)
+
+    def send_contrast_param_request_read(self, timeout_sec: float = 2.0) -> bool:
+        return self._request_param_read(self.PARAM_CONTRAST, timeout_sec)
+
+    def send_saturation_param_request_read(self, timeout_sec: float = 2.0) -> bool:
+        return self._request_param_read(self.PARAM_SATURATION, timeout_sec)
+
+    def send_hue_param_request_read(self, timeout_sec: float = 2.0) -> bool:
+        return self._request_param_read(self.PARAM_HUE, timeout_sec)
+
+    def send_gamma_param_request_read(self, timeout_sec: float = 2.0) -> bool:
+        return self._request_param_read(self.PARAM_GAMMA, timeout_sec)
+
+    def send_gain_param_request_read(self, timeout_sec: float = 2.0) -> bool:
+        return self._request_param_read(self.PARAM_GAIN, timeout_sec)
+
+    def send_white_balance_temperature_param_request_read(self, timeout_sec: float = 2.0) -> bool:
+        return self._request_param_read(self.PARAM_WB_TEMP, timeout_sec)
+
+    def send_sharpness_param_request_read(self, timeout_sec: float = 2.0) -> bool:
+        return self._request_param_read(self.PARAM_SHARPNESS, timeout_sec)
+
+    def send_exposure_time_absolute_param_request_read(self, timeout_sec: float = 2.0) -> bool:
+        return self._request_param_read(self.PARAM_EXPOSURE_ABS, timeout_sec)
 
     def _tx_heartbeat_loop(self) -> None:
         while self._running:
@@ -241,6 +429,7 @@ class MavlinkClient:
 
             with self._param_cv:
                 self._params[rx_id] = val
+                self._param_update_seq[rx_id] = self._param_update_seq.get(rx_id, 0) + 1
                 self._param_cv.notify_all()
 
             self._log(f"[rx] param_value id={rx_id} value={val}")
@@ -251,6 +440,17 @@ class MavlinkClient:
         key = param_id.strip()
         with self._param_lock:
             return self._params.get(key)
+
+    def get_camera_settings_parameters(self) -> dict[str, Optional[int]]:
+        """Return cached camera settings as a dictionary."""
+        result: dict[str, Optional[int]] = {}
+        for param_id in self.CAMERA_SETTING_PARAM_IDS:
+            val = self.get_param_cached(param_id)
+            if val is None or not math.isfinite(val):
+                result[param_id] = None
+            else:
+                result[param_id] = int(round(val))
+        return result
 
     def get_drone_position(self) -> list[float]:
         fx, fy, fz = self.px4_raw_pos
@@ -333,24 +533,25 @@ class MavlinkClient:
 
         return [qx2, qy2, qz2, qw2]
 
-    def set_config_mode_signal(self) -> None:
+    
+    def set_pose_estimation_mode_signal(self) -> None:
         try:
             self._mav.command_long_send(
                 self.target_sysid,
                 self.target_compid,
-                self.MAV_CMD_MY_APP_SET_CONFIG_MODE,
+                self.MAV_CMD_APP_SET_POSE_ESTIMATION_MODE,
                 0,
                 1, 0, 0, 0, 0, 0, 0,
             )
         except Exception:
             pass
 
-    def set_video_streaming_mode_signal(self) -> None:
+    def set_parameter_setting_mode_signal(self) -> None:
         try:
             self._mav.command_long_send(
                 self.target_sysid,
                 self.target_compid,
-                self.MAV_CMD_MY_APP_VIDEO_STREAMING_MODE,
+                self.MAV_CMD_APP_SET_PARAMETER_SETTING_MODE,
                 0,
                 1, 0, 0, 0, 0, 0, 0,
             )
@@ -402,33 +603,7 @@ class MavlinkClient:
 
                 self._param_cv.wait(timeout=remain)
 
-    def send_bin_threshold_parameter(self, threshold: int, timeout_sec: float = 2.0) -> bool:
-        return self._send_int32_param(self.PARAM_BIN_THRESHOLD, threshold, timeout_sec)
-
-    def send_brightness_parameter(self, brightness: int, timeout_sec: float = 2.0) -> bool:
-        return self._send_int32_param(self.PARAM_BRIGHTNESS, brightness, timeout_sec)
-
-    def send_contrast_parameter(self, contrast: int, timeout_sec: float = 2.0) -> bool:
-        return self._send_int32_param(self.PARAM_CONTRAST, contrast, timeout_sec)
-
-    def send_saturation_parameter(self, saturation: int, timeout_sec: float = 2.0) -> bool:
-        return self._send_int32_param(self.PARAM_SATURATION, saturation, timeout_sec)
-
-    def send_hue_parameter(self, hue: int, timeout_sec: float = 2.0) -> bool:
-        return self._send_int32_param(self.PARAM_HUE, hue, timeout_sec)
-
-    def send_gamma_parameter(self, gamma: int, timeout_sec: float = 2.0) -> bool:
-        return self._send_int32_param(self.PARAM_GAMMA, gamma, timeout_sec)
-
-    def send_gain_parameter(self, gain: int, timeout_sec: float = 2.0) -> bool:
-        return self._send_int32_param(self.PARAM_GAIN, gain, timeout_sec)
-
-    def send_white_balance_temperature_parameter(self, wb_temp: int, timeout_sec: float = 2.0) -> bool:
-        return self._send_int32_param(self.PARAM_WB_TEMP, wb_temp, timeout_sec)
-
-    def send_sharpness_parameter(self, sharpness: int, timeout_sec: float = 2.0) -> bool:
-        return self._send_int32_param(self.PARAM_SHARPNESS, sharpness, timeout_sec)
-
-    def send_exposure_time_absolute_parameter(self, exposure_abs: int, timeout_sec: float = 2.0) -> bool:
-        return self._send_int32_param(self.PARAM_EXPOSURE_ABS, exposure_abs, timeout_sec)
     
+    def _log(self, s: str) -> None:
+        if self._enable_stdout_log:
+            print(s)
