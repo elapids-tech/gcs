@@ -55,6 +55,10 @@ class MavlinkClient:
     MAV_CMD_APP_SET_PARAMETER_SETTING_MODE = 31002
     MAV_CMD_APP_SET_CAMERA_SETTING_MODE = 31003
 
+    # FCU (ArduPilot) target ids
+    FCU_SYSID = 1
+    FCU_COMPID = 1
+
     PARAM_BIN_THRESHOLD = "BIN_TH"
     PARAM_BRIGHTNESS = "CAM_BRIGHT"
     PARAM_CONTRAST = "CAM_CONT"
@@ -126,6 +130,11 @@ class MavlinkClient:
         self._params: Dict[str, float] = {}
         self._param_update_seq: Dict[str, int] = {}
 
+        self._ack_lock = threading.Lock()
+        self._ack_cv = threading.Condition(self._ack_lock)
+        self._ack_seq: Dict[int, int] = {}
+        self._ack_result: Dict[int, int] = {}
+
         self._camera_settings_request_lock = threading.Lock()
         self._camera_settings_request_min_interval_sec = 2.0
         self._last_camera_settings_request_sent_at = 0.0
@@ -185,6 +194,80 @@ class MavlinkClient:
             )
         except Exception:
             pass
+
+    def set_gps_global_origin(
+        self,
+        lat_deg: float,
+        lon_deg: float,
+        alt_m: float,
+        wait_ack: bool = True,
+        timeout_sec: float = 2.0,
+    ) -> bool:
+        """Send MAV_CMD_SET_GPS_GLOBAL_ORIGIN to FCU."""
+        lat = int(round(lat_deg * 1e7))
+        lon = int(round(lon_deg * 1e7))
+        alt_mm = int(round(alt_m * 1000.0))
+
+        try:
+            self._mav.command_long_send(
+                self.FCU_SYSID,
+                self.FCU_COMPID,
+                mavutil.mavlink.MAV_CMD_SET_GPS_GLOBAL_ORIGIN,
+                0,
+                float(self.FCU_SYSID),
+                float(lat),
+                float(lon),
+                float(alt_mm),
+                0, 0, 0,
+            )
+        except Exception:
+            return False
+
+        if not wait_ack:
+            return True
+
+        return self._wait_command_ack(
+            mavutil.mavlink.MAV_CMD_SET_GPS_GLOBAL_ORIGIN,
+            timeout_sec,
+        )
+
+    def set_home(
+        self,
+        use_current: bool,
+        lat_deg: float = 0.0,
+        lon_deg: float = 0.0,
+        alt_m: float = 0.0,
+        wait_ack: bool = True,
+        timeout_sec: float = 2.0,
+    ) -> bool:
+        """Send MAV_CMD_DO_SET_HOME to FCU."""
+        if use_current:
+            p1, p2, p3, p4 = 1.0, 0.0, 0.0, 0.0
+        else:
+            p1 = 0.0
+            p2 = float(int(round(lat_deg * 1e7)))
+            p3 = float(int(round(lon_deg * 1e7)))
+            p4 = float(int(round(alt_m * 1000.0)))
+
+        try:
+            self._mav.command_long_send(
+                self.FCU_SYSID,
+                self.FCU_COMPID,
+                mavutil.mavlink.MAV_CMD_DO_SET_HOME,
+                0,
+                p1, p2, p3, p4,
+                0, 0, 0,
+            )
+        except Exception:
+            return False
+
+        if not wait_ack:
+            return True
+
+        return self._wait_command_ack(
+            mavutil.mavlink.MAV_CMD_DO_SET_HOME,
+            timeout_sec,
+        )
 
     def send_bin_threshold_parameter(self, threshold: int, timeout_sec: float = 2.0) -> bool:
         return self._send_int32_param(self.PARAM_BIN_THRESHOLD, threshold, timeout_sec)
@@ -381,12 +464,35 @@ class MavlinkClient:
             self._handle_odometry(msg)
             return
 
+        if mtype == "COMMAND_ACK":
+            if src_sys == self.FCU_SYSID and src_comp == self.FCU_COMPID:
+                self._handle_command_ack(msg)
+            return
+
         if mtype == "PARAM_VALUE":
             if src_sys == self.target_sysid and src_comp == self.target_compid:
                 self._handle_param_value(msg)
             return
 
         self._log(f"[rx] type={mtype} sys={src_sys} comp={src_comp}")
+
+    def _handle_command_ack(self, msg) -> None:
+        try:
+            cmd = int(getattr(msg, "command", -1))
+            if cmd < 0:
+                return
+
+            result = int(
+                getattr(msg, "result", mavutil.mavlink.MAV_RESULT_FAILED)
+            )
+            with self._ack_cv:
+                self._ack_result[cmd] = result
+                self._ack_seq[cmd] = self._ack_seq.get(cmd, 0) + 1
+                self._ack_cv.notify_all()
+
+            self._log(f"[rx] command_ack cmd={cmd} result={result}")
+        except Exception:
+            return
 
     def _handle_odometry(self, msg) -> None:
         try:
@@ -435,6 +541,26 @@ class MavlinkClient:
             self._log(f"[rx] param_value id={rx_id} value={val}")
         except Exception:
             return
+
+    def _wait_command_ack(self, cmd: int, timeout_sec: float) -> bool:
+        with self._ack_cv:
+            prev_seq = self._ack_seq.get(cmd, 0)
+
+        deadline = time.monotonic() + max(0.0, float(timeout_sec))
+        with self._ack_cv:
+            while True:
+                if self._ack_seq.get(cmd, 0) > prev_seq:
+                    result = self._ack_result.get(
+                        cmd,
+                        mavutil.mavlink.MAV_RESULT_FAILED,
+                    )
+                    return result == mavutil.mavlink.MAV_RESULT_ACCEPTED
+
+                remain = deadline - time.monotonic()
+                if remain <= 0.0:
+                    return False
+
+                self._ack_cv.wait(timeout=remain)
 
     def get_param_cached(self, param_id: str) -> Optional[float]:
         key = param_id.strip()

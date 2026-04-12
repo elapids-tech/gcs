@@ -73,7 +73,12 @@ export function useControlSocket() {
 }
 
 
-const Viewer3d: React.FC = () => {
+type Viewer3dProps = {
+  landmarks: Landmarks[];
+  dronePose: DronePose | null;
+};
+
+const Viewer3d: React.FC<Viewer3dProps> = ({ landmarks, dronePose }) => {
   const gridConfig = {
     cellSize: 1,
     cellThickness: 0.5,
@@ -82,31 +87,6 @@ const Viewer3d: React.FC = () => {
     followCamera: true,
     infiniteGrid: true,
   };
-
-  const [landmarks, setLandmarks] = useState<Landmarks[]>([]);
-  const [dronePose, setDronePose] = useState<DronePose | null>(null);
-
-  useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8003/ws');
-
-    ws.onopen = () => console.log('WebSocket connection established');
-    ws.onmessage = (event) => {
-      const data: WebSocketMessage = JSON.parse(event.data);
-      switch (data.key) {
-        case 'setLandmarks':
-          setLandmarks(data.value);
-          break;
-        case 'dronePoseUpdate':
-          setDronePose(data.value);
-          break;
-        default:
-          console.warn(`Unknown key: ${(data as any).key}`);
-      }
-    };
-    ws.onerror = (error) => console.error('WebSocket error:', error);
-    ws.onclose = () => console.log('WebSocket connection closed');
-    return () => ws.close();
-  }, []);
 
   // ドローン姿勢のxyz軸（points は二次元配列）
   const getDroneAxes = (
@@ -181,7 +161,11 @@ const Viewer3d: React.FC = () => {
 };
 
 
-export const DroneControlPanel: React.FC = () => {
+type DroneControlPanelProps = {
+  dronePose: DronePose | null;
+};
+
+export const DroneControlPanel: React.FC<DroneControlPanelProps> = ({ dronePose }) => {
   const panelStyle: React.CSSProperties = {
     height: "100%",
     boxSizing: "border-box",
@@ -205,9 +189,40 @@ export const DroneControlPanel: React.FC = () => {
     marginTop: 16, 
   };
 
+  const separatorStyle: React.CSSProperties = {
+    border: 0,
+    borderTop: '1px solid #ddd',
+    margin: '12px 0',
+  };
+
+  const poseListStyle: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: 'max-content 1fr',
+    columnGap: 12,
+    rowGap: 6,
+    fontSize: 14,
+  };
+
+  const formatValue = (value: number | null | undefined) =>
+    typeof value === 'number' ? value.toFixed(3) : '--';
+
+  const toEulerDegrees = (quaternion: [number, number, number, number] | null) => {
+    if (!quaternion) return null;
+    const quat = new THREE.Quaternion(...quaternion);
+    const euler = new THREE.Euler().setFromQuaternion(quat, 'XYZ');
+    return {
+      roll: THREE.MathUtils.radToDeg(euler.x),
+      pitch: THREE.MathUtils.radToDeg(euler.y),
+      yaw: THREE.MathUtils.radToDeg(euler.z),
+    };
+  };
+
+  const euler = toEulerDegrees(dronePose?.quaternion ?? null);
+
 
   const { sendCommand } = useControlSocket();
 
+  const handleClickSetHome = () => sendCommand("set_home");
   const handleClickTakeoff = () => sendCommand("takeoff");
   const handleClickLanding = () => sendCommand("landing");
   const handleClickEmergencyStop = () => sendCommand("emergency_stop");
@@ -216,16 +231,22 @@ export const DroneControlPanel: React.FC = () => {
     <div style={panelStyle}>
       <div style={panelInnerStyle}>
         <div style={buttonsColumnStyle}>
-          <h2>Server State</h2>
-          <h2>Drone State</h2>
+          <h2>Drone Control</h2>
+          <button onClick={handleClickSetHome}>SET HOME</button>
           <button onClick={handleClickTakeoff}>TAKEOFF</button>
           <button onClick={handleClickLanding}>LANDING</button>
-          <button
-            style={emergencyButtonStyle}
-            onClick={handleClickEmergencyStop}
-          >
-            EMERGENCY STOP
-          </button>
+          <button style={emergencyButtonStyle} onClick={handleClickEmergencyStop}>EMERGENCY STOP</button>
+          <hr style={separatorStyle} />
+          <div style={poseListStyle}>
+            <div>Position</div>
+            <div>
+              x: {formatValue(dronePose?.position[0])}, y: {formatValue(dronePose?.position[1])}, z: {formatValue(dronePose?.position[2])}
+            </div>
+            <div>Attitude</div>
+            <div>
+              roll: {formatValue(euler?.roll)} deg, pitch: {formatValue(euler?.pitch)} deg, yaw: {formatValue(euler?.yaw)} deg
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -240,11 +261,35 @@ function MainLayout() {
   const [leftWidth, setLeftWidth] = useState<number>(900);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isSplitterHovered, setIsSplitterHovered] = useState<boolean>(false);
+  const [landmarks, setLandmarks] = useState<Landmarks[]>([]);
+  const [dronePose, setDronePose] = useState<DronePose | null>(null);
 
   const minLeft = 480;
   const minRight = 280;
   const splitterWidth = 4;
   const splitterGap = 5;
+
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8003/ws');
+
+    ws.onopen = () => console.log('WebSocket connection established');
+    ws.onmessage = (event) => {
+      const data: WebSocketMessage = JSON.parse(event.data);
+      switch (data.key) {
+        case 'setLandmarks':
+          setLandmarks(data.value);
+          break;
+        case 'dronePoseUpdate':
+          setDronePose(data.value);
+          break;
+        default:
+          console.warn(`Unknown key: ${(data as any).key}`);
+      }
+    };
+    ws.onerror = (error) => console.error('WebSocket error:', error);
+    ws.onclose = () => console.log('WebSocket connection closed');
+    return () => ws.close();
+  }, []);
 
   useEffect(() => {
     if (activeTab !== 'preview' || !previewContainerRef.current) return;
@@ -326,7 +371,7 @@ function MainLayout() {
                 overflow: 'hidden',
               }}
             >
-              <Viewer3d />
+              <Viewer3d landmarks={landmarks} dronePose={dronePose} />
             </div>
             <div
               role="separator"
@@ -355,7 +400,7 @@ function MainLayout() {
                 overflow: 'hidden',
               }}
             >
-              <DroneControlPanel />
+              <DroneControlPanel dronePose={dronePose} />
             </div>
           </div>
         ) : activeTab === 'config' ? (
