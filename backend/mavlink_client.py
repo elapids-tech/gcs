@@ -59,6 +59,10 @@ class MavlinkClient:
     FCU_SYSID = 1
     FCU_COMPID = 1
 
+    # Magic value for MAV_CMD_COMPONENT_ARM_DISARM param2 to force disarm
+    # regardless of safety checks (ArduPilot convention)
+    FORCE_DISARM_MAGIC_VALUE = 21196
+
     PARAM_BIN_THRESHOLD = "BIN_TH"
     PARAM_BRIGHTNESS = "CAM_BRIGHT"
     PARAM_CONTRAST = "CAM_CONT"
@@ -215,9 +219,9 @@ class MavlinkClient:
         Returns:
             True if the message was sent without error, False otherwise.
         """
-        lat = int(round(lat_deg * 1e7))
-        lon = int(round(lon_deg * 1e7))
-        alt_mm = int(round(alt_m * 1000.0))
+        lat = int(round(lat_deg * 1e7))   # degrees → degE7
+        lon = int(round(lon_deg * 1e7))   # degrees → degE7
+        alt_mm = int(round(alt_m * 1000.0))  # metres → millimetres
 
         try:
             self._mav.set_gps_global_origin_send(
@@ -318,7 +322,7 @@ class MavlinkClient:
             True if COMMAND_ACK with MAV_RESULT_ACCEPTED is received within
             *timeout_sec*, False otherwise.
         """
-        param2 = 21196.0 if force else 0.0
+        param2 = float(self.FORCE_DISARM_MAGIC_VALUE) if force else 0.0
         try:
             self._mav.command_long_send(
                 self.FCU_SYSID,
