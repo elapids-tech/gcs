@@ -214,7 +214,7 @@ class MavlinkClient:
                 self.FCU_COMPID,
                 mavutil.mavlink.MAV_CMD_SET_GPS_GLOBAL_ORIGIN,
                 0,
-                float(self.FCU_SYSID),
+                0,
                 float(lat),
                 float(lon),
                 float(alt_mm),
