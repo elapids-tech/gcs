@@ -200,36 +200,36 @@ class MavlinkClient:
         lat_deg: float,
         lon_deg: float,
         alt_m: float,
-        wait_ack: bool = True,
-        timeout_sec: float = 2.0,
     ) -> bool:
-        """Send MAV_CMD_SET_GPS_GLOBAL_ORIGIN to FCU."""
+        """Send SET_GPS_GLOBAL_ORIGIN message to FCU.
+
+        SET_GPS_GLOBAL_ORIGIN is a MAVLink message (not a command), so no
+        COMMAND_ACK is expected.  It tells the FCU's EKF where the local
+        coordinate origin maps to in geographic coordinates.
+
+        Args:
+            lat_deg: Latitude in degrees.
+            lon_deg: Longitude in degrees.
+            alt_m: Altitude in metres above MSL.
+
+        Returns:
+            True if the message was sent without error, False otherwise.
+        """
         lat = int(round(lat_deg * 1e7))
         lon = int(round(lon_deg * 1e7))
         alt_mm = int(round(alt_m * 1000.0))
 
         try:
-            self._mav.command_long_send(
+            self._mav.set_gps_global_origin_send(
                 self.FCU_SYSID,
-                self.FCU_COMPID,
-                mavutil.mavlink.MAV_CMD_SET_GPS_GLOBAL_ORIGIN,
-                0,
-                float(self.FCU_SYSID),
-                float(lat),
-                float(lon),
-                float(alt_mm),
-                0, 0, 0,
+                lat,
+                lon,
+                alt_mm,
             )
         except Exception:
             return False
 
-        if not wait_ack:
-            return True
-
-        return self._wait_command_ack(
-            mavutil.mavlink.MAV_CMD_SET_GPS_GLOBAL_ORIGIN,
-            timeout_sec,
-        )
+        return True
 
     def set_home(
         self,
@@ -240,14 +240,25 @@ class MavlinkClient:
         wait_ack: bool = True,
         timeout_sec: float = 2.0,
     ) -> bool:
-        """Send MAV_CMD_DO_SET_HOME to FCU."""
+        """Send MAV_CMD_DO_SET_HOME to FCU.
+
+        MAV_CMD_DO_SET_HOME parameter mapping (MAVLink spec):
+          param1 – Use current location: 1 = use current, 0 = use specified
+          param2 – Empty
+          param3 – Empty
+          param4 – Yaw angle [deg] (NaN to use current heading)
+          param5 – Latitude [deg]
+          param6 – Longitude [deg]
+          param7 – Altitude [m]
+        """
         if use_current:
-            p1, p2, p3, p4 = 1.0, 0.0, 0.0, 0.0
+            p1 = 1.0
+            p5, p6, p7 = 0.0, 0.0, 0.0
         else:
             p1 = 0.0
-            p2 = float(int(round(lat_deg * 1e7)))
-            p3 = float(int(round(lon_deg * 1e7)))
-            p4 = float(int(round(alt_m * 1000.0)))
+            p5 = float(lat_deg)
+            p6 = float(lon_deg)
+            p7 = float(alt_m)
 
         try:
             self._mav.command_long_send(
@@ -255,8 +266,7 @@ class MavlinkClient:
                 self.FCU_COMPID,
                 mavutil.mavlink.MAV_CMD_DO_SET_HOME,
                 0,
-                p1, p2, p3, p4,
-                0, 0, 0,
+                p1, 0.0, 0.0, float("nan"), p5, p6, p7,
             )
         except Exception:
             return False
@@ -266,6 +276,132 @@ class MavlinkClient:
 
         return self._wait_command_ack(
             mavutil.mavlink.MAV_CMD_DO_SET_HOME,
+            timeout_sec,
+        )
+
+    def arm(self, timeout_sec: float = 3.0) -> bool:
+        """Send MAV_CMD_COMPONENT_ARM_DISARM to arm the FCU motors.
+
+        MAV_CMD_COMPONENT_ARM_DISARM parameter mapping (MAVLink spec):
+          param1 – 0: disarm, 1: arm
+          param2 – Force arm/disarm (21196 = force, 0 = normal safety checks)
+
+        Returns:
+            True if COMMAND_ACK with MAV_RESULT_ACCEPTED is received within
+            *timeout_sec*, False otherwise.
+        """
+        try:
+            self._mav.command_long_send(
+                self.FCU_SYSID,
+                self.FCU_COMPID,
+                mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+                0,
+                1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            )
+        except Exception:
+            return False
+
+        return self._wait_command_ack(
+            mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+            timeout_sec,
+        )
+
+    def disarm(self, force: bool = False, timeout_sec: float = 3.0) -> bool:
+        """Send MAV_CMD_COMPONENT_ARM_DISARM to disarm the FCU motors.
+
+        Args:
+            force: When True, send the force-disarm magic value (21196) in
+                   param2 to bypass safety checks (use for emergency stop).
+            timeout_sec: Seconds to wait for COMMAND_ACK.
+
+        Returns:
+            True if COMMAND_ACK with MAV_RESULT_ACCEPTED is received within
+            *timeout_sec*, False otherwise.
+        """
+        param2 = 21196.0 if force else 0.0
+        try:
+            self._mav.command_long_send(
+                self.FCU_SYSID,
+                self.FCU_COMPID,
+                mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+                0,
+                0.0, param2, 0.0, 0.0, 0.0, 0.0, 0.0,
+            )
+        except Exception:
+            return False
+
+        return self._wait_command_ack(
+            mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+            timeout_sec,
+        )
+
+    def takeoff(self, altitude_m: float, timeout_sec: float = 5.0) -> bool:
+        """Send MAV_CMD_NAV_TAKEOFF to the FCU.
+
+        The drone must already be armed and in GUIDED mode before calling
+        this method.
+
+        MAV_CMD_NAV_TAKEOFF parameter mapping (MAVLink spec):
+          param1 – Minimum pitch [deg] (ignored by ArduCopter)
+          param4 – Yaw angle [deg] (NaN to use current heading)
+          param7 – Altitude [m]
+
+        Args:
+            altitude_m: Target takeoff altitude in metres (above home).
+            timeout_sec: Seconds to wait for COMMAND_ACK.
+
+        Returns:
+            True if COMMAND_ACK with MAV_RESULT_ACCEPTED is received within
+            *timeout_sec*, False otherwise.
+        """
+        try:
+            self._mav.command_long_send(
+                self.FCU_SYSID,
+                self.FCU_COMPID,
+                mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
+                0,
+                0.0, 0.0, 0.0, float("nan"),
+                0.0, 0.0, float(altitude_m),
+            )
+        except Exception:
+            return False
+
+        return self._wait_command_ack(
+            mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
+            timeout_sec,
+        )
+
+    def land(self, timeout_sec: float = 5.0) -> bool:
+        """Send MAV_CMD_NAV_LAND to the FCU.
+
+        MAV_CMD_NAV_LAND parameter mapping (MAVLink spec):
+          param1 – Abort altitude [m] (0 = use system default)
+          param4 – Yaw angle [deg] (NaN to use current heading)
+          param5 – Latitude [deg] (0 = current position)
+          param6 – Longitude [deg] (0 = current position)
+          param7 – Altitude [m] (0 = ground level)
+
+        Args:
+            timeout_sec: Seconds to wait for COMMAND_ACK.
+
+        Returns:
+            True if COMMAND_ACK with MAV_RESULT_ACCEPTED is received within
+            *timeout_sec*, False otherwise.
+        """
+        try:
+            self._mav.command_long_send(
+                self.FCU_SYSID,
+                self.FCU_COMPID,
+                mavutil.mavlink.MAV_CMD_NAV_LAND,
+                0,
+                0.0, 0.0, 0.0, float("nan"),
+                0.0, 0.0, 0.0,
+            )
+        except Exception:
+            return False
+
+        return self._wait_command_ack(
+            mavutil.mavlink.MAV_CMD_NAV_LAND,
             timeout_sec,
         )
 

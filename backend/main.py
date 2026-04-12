@@ -781,17 +781,26 @@ async def drone_control_socket(websocket: WebSocket):
             
             if action == "takeoff":
                 print("takeoff command received")
-                # 高度などが params に入っている想定
                 altitude = params.get("altitude", 2.0)
                 print("target altitude:", altitude)
-                # send_mavlink_takeoff(altitude)
+                result = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: mavlink_client.takeoff(float(altitude))
+                )
+                print("takeoff result:", result)
 
             elif action == "landing":
                 print("landing command received")
-                # send_mavlink_land()
+                result = await asyncio.get_event_loop().run_in_executor(
+                    None, mavlink_client.land
+                )
+                print("land result:", result)
 
             elif action == "emergency_stop":
                 print("emergency stop command received")
+                result = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: mavlink_client.disarm(force=True)
+                )
+                print("emergency stop (force disarm) result:", result)
 
             else:
                 print("unknown action:", action)
