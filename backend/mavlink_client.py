@@ -49,6 +49,18 @@ class MavlinkClient:
         Socket recv timeout (stop responsiveness).
     """
 
+    # FCU (Flight Control Unit) identifiers
+    FCU_SYSID = 1
+    FCU_COMPID = 1
+
+    # Fixed GPS global origin coordinates used when GPS is unavailable.
+    # The system relies on an image sensor for position estimation, so these
+    # dummy values are sent to the FCU solely to establish a consistent EKF
+    # and ODOMETRY origin.
+    GPS_ORIGIN_LAT_DEG = 0.0
+    GPS_ORIGIN_LON_DEG = 0.0
+    GPS_ORIGIN_ALT_M = 0.0
+
     # drone mode control command (custom MAVLink command, not standard)
     MAV_CMD_APP_SET_IDLE_MODE = 31000
     MAV_CMD_APP_SET_POSE_ESTIMATION_MODE = 31001
@@ -168,6 +180,68 @@ class MavlinkClient:
                 self.MAV_CMD_APP_SET_IDLE_MODE,
                 0,
                 1, 0, 0, 0, 0, 0, 0,
+            )
+        except Exception:
+            pass
+
+    def send_gps_global_origin(
+        self,
+        lat_deg: float = GPS_ORIGIN_LAT_DEG,
+        lon_deg: float = GPS_ORIGIN_LON_DEG,
+        alt_m: float = GPS_ORIGIN_ALT_M,
+    ) -> None:
+        """Send SET_GPS_GLOBAL_ORIGIN (message #48) to the FCU.
+
+        Informs the FCU of the global GPS coordinates that correspond to the
+        local-frame origin (0, 0, 0). Because the system does not use a GPS
+        receiver for position estimation, fixed dummy coordinates are used so
+        that the EKF and ODOMETRY share a consistent, stable origin.
+
+        Args:
+            lat_deg: Latitude in decimal degrees.
+            lon_deg: Longitude in decimal degrees.
+            alt_m:   Altitude in metres above sea level.
+        """
+        try:
+            self._mav.set_gps_global_origin_send(
+                self.FCU_SYSID,
+                int(lat_deg * 1e7),
+                int(lon_deg * 1e7),
+                int(alt_m * 1e3),
+            )
+        except Exception:
+            pass
+
+    def set_home_position(
+        self,
+        lat_deg: float = GPS_ORIGIN_LAT_DEG,
+        lon_deg: float = GPS_ORIGIN_LON_DEG,
+        alt_m: float = GPS_ORIGIN_ALT_M,
+    ) -> None:
+        """Send MAV_CMD_DO_SET_HOME (command #179) to the FCU.
+
+        Sets the home position on the FCU using fixed GPS coordinates. Because
+        the system relies on an image sensor rather than GPS, fixed dummy
+        coordinates are supplied (use_current=0) to keep the home position
+        consistent across flights.
+
+        Args:
+            lat_deg: Latitude in decimal degrees.
+            lon_deg: Longitude in decimal degrees.
+            alt_m:   Altitude in metres above sea level.
+        """
+        try:
+            self._mav.command_long_send(
+                self.FCU_SYSID,
+                self.FCU_COMPID,
+                mavutil.mavlink.MAV_CMD_DO_SET_HOME,
+                0,          # confirmation
+                0,          # param1: use_current=0 → use provided coordinates
+                0, 0,       # param2, param3: empty
+                float("nan"),  # param4: yaw (unspecified)
+                lat_deg,    # param5: latitude
+                lon_deg,    # param6: longitude
+                alt_m,      # param7: altitude (m above sea level)
             )
         except Exception:
             pass

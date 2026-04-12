@@ -779,7 +779,15 @@ async def drone_control_socket(websocket: WebSocket):
             action = data.get("action")
             params = data.get("params", {})
             
-            if action == "takeoff":
+            if action == "set_gps_global_origin":
+                print("set_gps_global_origin command received")
+                mavlink_client.send_gps_global_origin()
+
+            elif action == "set_home_position":
+                print("set_home_position command received")
+                mavlink_client.set_home_position()
+
+            elif action == "takeoff":
                 print("takeoff command received")
                 # 高度などが params に入っている想定
                 altitude = params.get("altitude", 2.0)

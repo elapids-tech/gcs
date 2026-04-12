@@ -208,6 +208,8 @@ export const DroneControlPanel: React.FC = () => {
 
   const { sendCommand } = useControlSocket();
 
+  const handleClickSetGpsGlobalOrigin = () => sendCommand("set_gps_global_origin");
+  const handleClickSetHomePosition = () => sendCommand("set_home_position");
   const handleClickTakeoff = () => sendCommand("takeoff");
   const handleClickLanding = () => sendCommand("landing");
   const handleClickEmergencyStop = () => sendCommand("emergency_stop");
@@ -218,6 +220,8 @@ export const DroneControlPanel: React.FC = () => {
         <div style={buttonsColumnStyle}>
           <h2>Server State</h2>
           <h2>Drone State</h2>
+          <button onClick={handleClickSetGpsGlobalOrigin}>SET GPS GLOBAL ORIGIN</button>
+          <button onClick={handleClickSetHomePosition}>SET HOME POSITION</button>
           <button onClick={handleClickTakeoff}>TAKEOFF</button>
           <button onClick={handleClickLanding}>LANDING</button>
           <button
