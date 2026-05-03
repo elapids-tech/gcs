@@ -122,8 +122,14 @@ class MavlinkClient:
         self._running = True
         self._threads = []
 
-        self.px4_raw_pos = [0.0, 0.0, 0.0]
-        self.px4_raw_quat = [0.0, 0.0, 0.0, 1.0]
+        # Latest ODOMETRY in FRD frame (origin defined by flight area).
+        self.odom_frd_pos = [0.0, 0.0, 0.0]
+        self.odom_frd_quat = [0.0, 0.0, 0.0, 1.0]
+
+        self._home_lock = threading.Lock()
+        self._home_cv = threading.Condition(self._home_lock)
+        self._home_seq = 0
+        self._home_global: Optional[Tuple[int, int, int]] = None
 
         self._param_lock = threading.Lock()
         self._param_cv = threading.Condition(self._param_lock)
@@ -222,6 +228,100 @@ class MavlinkClient:
             mavutil.mavlink.MAV_CMD_DO_SET_HOME,
             timeout_sec,
         )
+
+    def set_home_from_odometry(
+        self,
+        wait_update: bool = False,
+        timeout_sec: float = 2.0,
+    ) -> bool:
+        """Send SET_HOME_POSITION using latest ODOMETRY (FRD) as local origin."""
+        x, y, z = self.odom_frd_pos
+        qx, qy, qz, qw = self.odom_frd_quat
+
+        vals = (x, y, z, qx, qy, qz, qw)
+        if not all(math.isfinite(v) for v in vals):
+            return False
+
+        with self._home_cv:
+            home = self._home_global
+            prev_seq = self._home_seq
+
+        if home is None:
+            if not self._request_home_position(timeout_sec):
+                self._log("[tx-skip] set_home_from_odometry: missing HOME_POSITION global")
+                return False
+
+            with self._home_cv:
+                home = self._home_global
+                prev_seq = self._home_seq
+
+            if home is None:
+                self._log("[tx-skip] set_home_from_odometry: HOME_POSITION not received")
+                return False
+
+        lat_e7, lon_e7, alt_mm = home
+        q = [float(qw), float(qx), float(qy), float(qz)]
+
+        try:
+            self._mav.set_home_position_send(
+                self.FCU_SYSID,
+                int(lat_e7),
+                int(lon_e7),
+                int(alt_mm),
+                float(x),
+                float(y),
+                float(z),
+                q,
+                0.0,
+                0.0,
+                0.0,
+            )
+        except Exception:
+            return False
+
+        if not wait_update:
+            return True
+
+        return self._wait_home_position_update(prev_seq, timeout_sec)
+
+    def _request_home_position(self, timeout_sec: float = 2.0) -> bool:
+        with self._home_cv:
+            prev_seq = self._home_seq
+
+        msg_id = float(mavutil.mavlink.MAVLINK_MSG_ID_HOME_POSITION)
+        interval_us = float(1_000_000)
+
+        try:
+            self._mav.command_long_send(
+                self.FCU_SYSID,
+                self.FCU_COMPID,
+                mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+                0,
+                msg_id,
+                interval_us,
+                0,
+                0,
+                0,
+                0,
+                0,
+            )
+            self._mav.command_long_send(
+                self.FCU_SYSID,
+                self.FCU_COMPID,
+                mavutil.mavlink.MAV_CMD_REQUEST_MESSAGE,
+                0,
+                msg_id,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            )
+        except Exception:
+            return False
+
+        return self._wait_home_position_update(prev_seq, timeout_sec)
 
     def send_bin_threshold_parameter(self, threshold: int, timeout_sec: float = 2.0) -> bool:
         return self._send_int32_param(self.PARAM_BIN_THRESHOLD, threshold, timeout_sec)
@@ -418,6 +518,10 @@ class MavlinkClient:
             self._handle_odometry(msg)
             return
 
+        if mtype == "HOME_POSITION":
+            self._handle_home_position(msg)
+            return
+
         if mtype == "COMMAND_ACK":
             if src_sys == self.FCU_SYSID and src_comp == self.FCU_COMPID:
                 self._handle_command_ack(msg)
@@ -469,10 +573,51 @@ class MavlinkClient:
             
             # print(f"Received ODOMETRY: pos=({x:.2f}, {y:.2f}, {z:.2f}) quat=({qx:.3f}, {qy:.3f}, {qz:.3f}, {w:.3f})")
 
-            self.px4_raw_pos = [x, y, z]
-            self.px4_raw_quat = [qx, qy, qz, w]
+            self.odom_frd_pos = [x, y, z]
+            self.odom_frd_quat = [qx, qy, qz, w]
         except Exception:
             return
+
+    def _handle_home_position(self, msg) -> None:
+        try:
+            lat = getattr(msg, "latitude", None)
+            if lat is None:
+                lat = getattr(msg, "lat", None)
+
+            lon = getattr(msg, "longitude", None)
+            if lon is None:
+                lon = getattr(msg, "lon", None)
+
+            alt = getattr(msg, "altitude", None)
+            if alt is None:
+                alt = getattr(msg, "alt", None)
+
+            if lat is None or lon is None or alt is None:
+                return
+
+            lat_i = int(lat)
+            lon_i = int(lon)
+            alt_i = int(alt)
+
+            with self._home_cv:
+                self._home_global = (lat_i, lon_i, alt_i)
+                self._home_seq += 1
+                self._home_cv.notify_all()
+        except Exception:
+            return
+
+    def _wait_home_position_update(self, prev_seq: int, timeout_sec: float) -> bool:
+        deadline = time.monotonic() + max(0.0, float(timeout_sec))
+        with self._home_cv:
+            while True:
+                if self._home_seq > prev_seq:
+                    return True
+
+                remain = deadline - time.monotonic()
+                if remain <= 0.0:
+                    return False
+
+                self._home_cv.wait(timeout=remain)
 
     def _handle_param_value(self, msg) -> None:
         try:
@@ -533,11 +678,11 @@ class MavlinkClient:
         return result
 
     def get_drone_position(self) -> list[float]:
-        fx, fy, fz = self.px4_raw_pos
+        fx, fy, fz = self.odom_frd_pos
         return [fx, -fy, -fz]
 
     def get_drone_quaternion(self) -> list[float]:
-        qx, qy, qz, qw = self.px4_raw_quat
+        qx, qy, qz, qw = self.odom_frd_quat
 
         w = qw
         x = qx

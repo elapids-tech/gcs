@@ -781,7 +781,8 @@ async def drone_control_socket(websocket: WebSocket):
             
             if action == "set_home":
                 print("set_home command received")
-                mavlink_client.set_home()
+                ok = mavlink_client.set_home_from_odometry(wait_update=True)
+                print(f"set_home_from_odometry result: {ok}")
 
             elif action == "takeoff":
                 print("takeoff command received")
