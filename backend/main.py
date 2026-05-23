@@ -744,6 +744,7 @@ async def periodic_task():
         while True:
             position = mavlink_client.get_drone_position()
             quaternion = mavlink_client.get_drone_quaternion()
+            has_odometry = mavlink_client.has_drone_odometry()
             sysid = 1
 
             drone_pose = {
@@ -752,6 +753,7 @@ async def periodic_task():
                     "sysid": sysid,
                     "position": list(position),
                     "quaternion": list(quaternion),
+                    "hasOdometry": has_odometry,
                 },
             }
 

@@ -125,6 +125,7 @@ class MavlinkClient:
         # Latest ODOMETRY in FRD frame (origin defined by flight area).
         self.odom_frd_pos = [0.0, 0.0, 0.0]
         self.odom_frd_quat = [0.0, 0.0, 0.0, 1.0]
+        self.has_odometry = False
 
         self._home_lock = threading.Lock()
         self._home_cv = threading.Condition(self._home_lock)
@@ -575,6 +576,7 @@ class MavlinkClient:
 
             self.odom_frd_pos = [x, y, z]
             self.odom_frd_quat = [qx, qy, qz, w]
+            self.has_odometry = True
         except Exception:
             return
 
@@ -680,6 +682,9 @@ class MavlinkClient:
     def get_drone_position(self) -> list[float]:
         fx, fy, fz = self.odom_frd_pos
         return [fx, -fy, -fz]
+
+    def has_drone_odometry(self) -> bool:
+        return bool(self.has_odometry)
 
     def get_drone_quaternion(self) -> list[float]:
         qx, qy, qz, qw = self.odom_frd_quat

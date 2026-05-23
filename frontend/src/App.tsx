@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
-import { Canvas } from '@react-three/fiber';
-import { Grid, Line, GizmoHelper, GizmoViewport, OrbitControls, Environment, Sphere } from '@react-three/drei';
+import { Canvas, useThree } from '@react-three/fiber';
+import { Grid, Line, OrbitControls, Environment, Sphere } from '@react-three/drei';
 import { CameraSettingsPage } from './features/cameraSettings';
 import { FlightAreaPage } from './features/flightArea';
 import './styles.css';
@@ -24,11 +24,25 @@ type DronePose = {
   sysid: number;
   position: [number, number, number];
   quaternion: [number, number, number, number];
+  hasOdometry?: boolean;
 };
 
 type WebSocketMessage =
   | { key: 'setLandmarks'; value: Landmarks[] }
   | { key: 'dronePoseUpdate'; value: DronePose };
+
+const isNearlyEqual = (a: number, b: number, eps = 1e-6) => Math.abs(a - b) <= eps;
+
+const isFallbackPoseWithoutOdometry = (pose: DronePose) => {
+  const [px, py, pz] = pose.position;
+  const [qx, qy, qz, qw] = pose.quaternion;
+
+  const isZeroPosition = isNearlyEqual(px, 0) && isNearlyEqual(py, 0) && isNearlyEqual(pz, 0);
+  const isIdentityQuat = isNearlyEqual(qx, 0) && isNearlyEqual(qy, 0) && isNearlyEqual(qz, 0) && isNearlyEqual(qw, 1);
+  const isConvertedDefaultQuat = isNearlyEqual(qx, 1) && isNearlyEqual(qy, 0) && isNearlyEqual(qz, 0) && isNearlyEqual(qw, 0);
+
+  return isZeroPosition && (isIdentityQuat || isConvertedDefaultQuat);
+};
 
 // === 色マップ ===
 const colorMap: { [key: string]: string } = {
@@ -40,6 +54,38 @@ const colorMap: { [key: string]: string } = {
   '6': 'yellow',
 };
 const getColorForId = (id: number | string): string => colorMap[id.toString()] || 'gray';
+
+const disposeLoadedObject = (object: THREE.Object3D | null) => {
+  if (!object) return;
+
+  object.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+
+    mesh.geometry?.dispose();
+
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    materials.forEach((material) => {
+      if (!material) return;
+      material.dispose();
+    });
+  });
+};
+
+const ViewerEnvironment: React.FC<{ environmentMap: THREE.Texture }> = ({ environmentMap }) => {
+  const { scene } = useThree();
+
+  useEffect(() => {
+    scene.environment = environmentMap;
+    return () => {
+      if (scene.environment === environmentMap) {
+        scene.environment = null;
+      }
+    };
+  }, [scene, environmentMap]);
+
+  return null;
+};
 
 
 export function useControlSocket() {
@@ -76,9 +122,22 @@ export function useControlSocket() {
 type Viewer3dProps = {
   landmarks: Landmarks[];
   dronePose: DronePose | null;
+  importedObject: THREE.Group | null;
+  environmentMap: THREE.Texture | null;
+  showGrid: boolean;
+  showOriginAxes: boolean;
+  hasReceivedDronePose: boolean;
 };
 
-const Viewer3d: React.FC<Viewer3dProps> = ({ landmarks, dronePose }) => {
+const Viewer3d: React.FC<Viewer3dProps> = ({
+  landmarks,
+  dronePose,
+  importedObject,
+  environmentMap,
+  showGrid,
+  showOriginAxes,
+  hasReceivedDronePose,
+}) => {
   const gridConfig = {
     cellSize: 1,
     cellThickness: 0.5,
@@ -121,14 +180,19 @@ const Viewer3d: React.FC<Viewer3dProps> = ({ landmarks, dronePose }) => {
     <Canvas
       className="canvas"
       camera={{ position: [10, 12, 12], fov: 25 }}
+      onCreated={({ gl }) => {
+        gl.outputColorSpace = THREE.SRGBColorSpace;
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = 1.8;
+      }}
     >
       <color attach="background" args={['#a9a9a9']} />
       <group position={[0, 0, 0]}>
         {/* グリッド（Z-up のため X 軸回りに 90 度回転） */}
-        <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]} args={[10, 10]} {...gridConfig} />
+        {showGrid && <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]} args={[10, 10]} {...gridConfig} />}
 
         {/* 世界座標中心軸 */}
-        {centerAxis.map((line, i) => (
+        {showOriginAxes && centerAxis.map((line, i) => (
           <Line key={`center-axis-${i}`} points={line.points} color={line.color} lineWidth={2} />
         ))}
 
@@ -139,23 +203,24 @@ const Viewer3d: React.FC<Viewer3dProps> = ({ landmarks, dronePose }) => {
           </Sphere>
         ))}
 
+        {/* インポートモデル */}
+        {importedObject && <primitive object={importedObject} />}
+
         {/* ドローン姿勢のxyz軸 */}
-        {dronePose &&
+        {hasReceivedDronePose && dronePose &&
           getDroneAxes(dronePose.position, dronePose.quaternion).map((axis, i) => (
             <Line key={`drone-axis-${i}`} points={axis.points} color={axis.color} lineWidth={2} />
           ))}
       </group>
 
       {/* 環境 */}
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[5, 5, 5]} intensity={0.8} />
+      <ambientLight intensity={1.1} />
+      <hemisphereLight args={['#ffffff', '#b7c9e8', 0.55]} />
+      <directionalLight position={[5, 5, 5]} intensity={1.35} />
 
       {/* カメラ操作 */}
       <OrbitControls makeDefault enableDamping={false} />
-      <Environment preset="city" />
-      <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
-        <GizmoViewport axisColors={['#9d4b4b', '#2f7f4f', '#3b5b9d']} labelColor="white" />
-      </GizmoHelper>
+      {environmentMap ? <ViewerEnvironment environmentMap={environmentMap} /> : <Environment preset="city" />}
     </Canvas>
   );
 };
@@ -264,6 +329,11 @@ function MainLayout() {
   const [isSplitterHovered, setIsSplitterHovered] = useState<boolean>(false);
   const [landmarks, setLandmarks] = useState<Landmarks[]>([]);
   const [dronePose, setDronePose] = useState<DronePose | null>(null);
+  const [importedObject, setImportedObject] = useState<THREE.Group | null>(null);
+  const [environmentMap, setEnvironmentMap] = useState<THREE.Texture | null>(null);
+  const [showGrid, setShowGrid] = useState(true);
+  const [showOriginAxes, setShowOriginAxes] = useState(true);
+  const [hasReceivedDronePose, setHasReceivedDronePose] = useState(false);
 
   const minLeft = 480;
   const minRight = 280;
@@ -281,16 +351,46 @@ function MainLayout() {
           setLandmarks(data.value);
           break;
         case 'dronePoseUpdate':
-          setDronePose(data.value);
+          {
+            const hasOdometry = typeof data.value.hasOdometry === 'boolean'
+              ? data.value.hasOdometry
+              : !isFallbackPoseWithoutOdometry(data.value);
+
+            setHasReceivedDronePose(hasOdometry);
+            setDronePose(hasOdometry ? data.value : null);
+          }
           break;
         default:
           console.warn(`Unknown key: ${(data as any).key}`);
       }
     };
     ws.onerror = (error) => console.error('WebSocket error:', error);
-    ws.onclose = () => console.log('WebSocket connection closed');
+    ws.onclose = () => {
+      setHasReceivedDronePose(false);
+      setDronePose(null);
+      console.log('WebSocket connection closed');
+    };
     return () => ws.close();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      disposeLoadedObject(importedObject);
+      environmentMap?.dispose();
+    };
+  }, [importedObject, environmentMap]);
+
+  const handleModelImported = (nextObject: THREE.Group, nextEnvironmentMap: THREE.Texture | null) => {
+    setImportedObject((prev) => {
+      disposeLoadedObject(prev);
+      return nextObject;
+    });
+
+    setEnvironmentMap((prev) => {
+      prev?.dispose();
+      return nextEnvironmentMap;
+    });
+  };
 
   useEffect(() => {
     if (activeTab !== 'preview' || !previewContainerRef.current) return;
@@ -372,7 +472,51 @@ function MainLayout() {
                 overflow: 'hidden',
               }}
             >
-              <Viewer3d landmarks={landmarks} dronePose={dronePose} />
+              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 10,
+                    left: 10,
+                    zIndex: 10,
+                    display: 'flex',
+                    gap: 12,
+                    alignItems: 'center',
+                    padding: '6px 10px',
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 6,
+                    fontSize: 13,
+                  }}
+                >
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={showGrid}
+                      onChange={(event) => setShowGrid(event.target.checked)}
+                    />
+                    Grid
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={showOriginAxes}
+                      onChange={(event) => setShowOriginAxes(event.target.checked)}
+                    />
+                    Origin
+                  </label>
+                </div>
+
+                <Viewer3d
+                  landmarks={landmarks}
+                  dronePose={dronePose}
+                  importedObject={importedObject}
+                  environmentMap={environmentMap}
+                  showGrid={showGrid}
+                  showOriginAxes={showOriginAxes}
+                  hasReceivedDronePose={hasReceivedDronePose}
+                />
+              </div>
             </div>
             <div
               role="separator"
@@ -409,7 +553,7 @@ function MainLayout() {
             <CameraSettingsPage />
           </div>
         ) : (
-          <FlightAreaPage />
+          <FlightAreaPage onModelImported={handleModelImported} />
         )}
       </div>
     </div>
