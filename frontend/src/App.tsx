@@ -263,14 +263,41 @@ export const DroneControlPanel: React.FC<DroneControlPanelProps> = ({ dronePose 
 
   const poseListStyle: React.CSSProperties = {
     display: 'grid',
-    gridTemplateColumns: 'max-content 1fr',
-    columnGap: 12,
-    rowGap: 6,
+    gridTemplateColumns: 'max-content max-content 1fr',
+    columnGap: 8,
+    rowGap: 4,
     fontSize: 14,
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    fontVariantNumeric: 'tabular-nums',
   };
 
-  const formatValue = (value: number | null | undefined) =>
-    typeof value === 'number' ? value.toFixed(3) : '--';
+  const poseSectionStyle: React.CSSProperties = {
+    gridColumn: '1 / -1',
+    fontWeight: 600,
+    marginTop: 6,
+  };
+
+  const poseValueStyle: React.CSSProperties = {
+    whiteSpace: 'pre',
+    textAlign: 'right',
+  };
+
+  const formatFixedWidth = (
+    value: number | null | undefined,
+    decimals: number,
+    integerWidth: number
+  ) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return '--';
+    const fixed = value.toFixed(decimals);
+    const totalWidth = integerWidth + (decimals > 0 ? 1 + decimals : 0) + 1;
+    return fixed.padStart(totalWidth, ' ');
+  };
+
+  const formatPosition = (value: number | null | undefined) =>
+    formatFixedWidth(value, 3, 3);
+
+  const formatAttitude = (value: number | null | undefined) =>
+    formatFixedWidth(value, 3, 3);
 
   const toEulerDegrees = (quaternion: [number, number, number, number] | null) => {
     if (!quaternion) return null;
@@ -304,14 +331,27 @@ export const DroneControlPanel: React.FC<DroneControlPanelProps> = ({ dronePose 
           <button style={emergencyButtonStyle} onClick={handleClickEmergencyStop}>EMERGENCY STOP</button>
           <hr style={separatorStyle} />
           <div style={poseListStyle}>
-            <div>Position</div>
-            <div>
-              x: {formatValue(dronePose?.position[0])}, y: {formatValue(dronePose?.position[1])}, z: {formatValue(dronePose?.position[2])}
-            </div>
-            <div>Attitude</div>
-            <div>
-              roll: {formatValue(euler?.roll)} deg, pitch: {formatValue(euler?.pitch)} deg, yaw: {formatValue(euler?.yaw)} deg
-            </div>
+            <div style={poseSectionStyle}>Position</div>
+            <div>x</div>
+            <div>:</div>
+            <div style={poseValueStyle}>{formatPosition(dronePose?.position[0])}</div>
+            <div>y</div>
+            <div>:</div>
+            <div style={poseValueStyle}>{formatPosition(dronePose?.position[1])}</div>
+            <div>z</div>
+            <div>:</div>
+            <div style={poseValueStyle}>{formatPosition(dronePose?.position[2])}</div>
+
+            <div style={poseSectionStyle}>Attitude</div>
+            <div>roll</div>
+            <div>:</div>
+            <div style={poseValueStyle}>{formatAttitude(euler?.roll)} deg</div>
+            <div>pitch</div>
+            <div>:</div>
+            <div style={poseValueStyle}>{formatAttitude(euler?.pitch)} deg</div>
+            <div>yaw</div>
+            <div>:</div>
+            <div style={poseValueStyle}>{formatAttitude(euler?.yaw)} deg</div>
           </div>
         </div>
       </div>
