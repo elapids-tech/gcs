@@ -170,10 +170,10 @@ const Viewer3d: React.FC<Viewer3dProps> = ({
     });
   };
 
-  const centerAxis: { points: [Vec3, Vec3]; color: string }[] = [
-    { points: [[0, 0, 0], [1, 0, 0]], color: 'red' },
-    { points: [[0, 0, 0], [0, 1, 0]], color: 'green' },
-    { points: [[0, 0, 0], [0, 0, 1]], color: 'blue' }
+  const centerAxis: { color: string; position: Vec3; rotation: Vec3 }[] = [
+    { color: 'red', position: [0.5, 0, 0], rotation: [0, 0, Math.PI / 2] },
+    { color: 'green', position: [0, 0.5, 0], rotation: [0, 0, 0] },
+    { color: 'blue', position: [0, 0, 0.5], rotation: [Math.PI / 2, 0, 0] }
   ];
 
   return (
@@ -189,11 +189,34 @@ const Viewer3d: React.FC<Viewer3dProps> = ({
       <color attach="background" args={['#a9a9a9']} />
       <group position={[0, 0, 0]}>
         {/* グリッド（Z-up のため X 軸回りに 90 度回転） */}
-        {showGrid && <Grid rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]} args={[10, 10]} {...gridConfig} />}
+        {showGrid && (
+          <Grid
+            rotation={[Math.PI / 2, 0, 0]}
+            position={[0, 0, 0]}
+            args={[10, 10]}
+            renderOrder={-10}
+            {...gridConfig}
+          />
+        )}
 
         {/* 世界座標中心軸 */}
-        {showOriginAxes && centerAxis.map((line, i) => (
-          <Line key={`center-axis-${i}`} points={line.points} color={line.color} lineWidth={2} />
+        {showOriginAxes && centerAxis.map((axis, i) => (
+          <mesh
+            key={`center-axis-${i}`}
+            position={axis.position}
+            rotation={axis.rotation}
+            renderOrder={1000}
+          >
+            <cylinderGeometry args={[0.01, 0.01, 1, 16]} />
+            <meshBasicMaterial
+              color={axis.color}
+              depthTest={false}
+              depthWrite={false}
+              toneMapped={false}
+              transparent={true}
+              opacity={1}
+            />
+          </mesh>
         ))}
 
         {/* ランドマーク */}
