@@ -514,7 +514,7 @@ const FlightAreaPage: React.FC<FlightAreaPageProps> = ({ onModelImported }) => {
 
   return (
     <div className="config-panel" style={pageStyle}>
-      <h2>Flight Area</h2>
+      <h2>Project Management</h2>
       <div style={{ maxWidth: 480 }}>
         <h3>Server Setting</h3>
         <div style={{ display: 'flex', gap: 20, justifyContent: 'flex-start', alignItems: 'center' }}>

@@ -10,6 +10,13 @@ function MainLayout() {
   const [importedObject, setImportedObject] = useState<THREE.Group | null>(null);
   const [environmentMap, setEnvironmentMap] = useState<THREE.Texture | null>(null);
 
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLSpanElement>, tab: 'preview' | 'config' | 'flight') => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      setActiveTab(tab);
+    }
+  };
+
   useEffect(() => {
     return () => {
       disposeLoadedObject(importedObject);
@@ -32,15 +39,33 @@ function MainLayout() {
   return (
     <div className="main-layout">
       <div className="top-bar">
-        <button className={activeTab === 'preview' ? 'active' : ''} onClick={() => setActiveTab('preview')}>
+        <span
+          role="button"
+          tabIndex={0}
+          className={`top-tab ${activeTab === 'flight' ? 'active' : ''}`}
+          onClick={() => setActiveTab('flight')}
+          onKeyDown={(event) => handleTabKeyDown(event, 'flight')}
+        >
+          Projects
+        </span>
+        <span
+          role="button"
+          tabIndex={0}
+          className={`top-tab ${activeTab === 'preview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('preview')}
+          onKeyDown={(event) => handleTabKeyDown(event, 'preview')}
+        >
           3D Viewer
-        </button>
-        <button className={activeTab === 'config' ? 'active' : ''} onClick={() => setActiveTab('config')}>
+        </span>
+        <span
+          role="button"
+          tabIndex={0}
+          className={`top-tab ${activeTab === 'config' ? 'active' : ''}`}
+          onClick={() => setActiveTab('config')}
+          onKeyDown={(event) => handleTabKeyDown(event, 'config')}
+        >
           Camera Settings
-        </button>
-        <button className={activeTab === 'flight' ? 'active' : ''} onClick={() => setActiveTab('flight')}>
-          Flight Area
-        </button>
+        </span>
       </div>
 
       <div className="main-content">

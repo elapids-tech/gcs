@@ -21,10 +21,34 @@ html, body, #root {
 /* 上部タブバー */
 .top-bar {
   display: flex;
-  gap: 8px;
-  padding: 4px;
+  gap: 16px;
+  align-items: center;
+  padding: 6px 12px;
   background: #ddd;
   flex-shrink: 0; /* 高さ固定 */
+}
+
+.top-tab {
+  font-size: 12px;
+  font-weight: 520;
+  line-height: 1.2;
+  color: #1f1f1f;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid transparent;
+}
+
+.top-tab:hover {
+  color: #000;
+}
+
+.top-tab:focus-visible {
+  outline: 2px solid #444;
+  outline-offset: 2px;
+}
+
+.top-tab.active {
+  border-bottom-color: #111;
 }
 
 /* ボタン下のメイン領域 */
