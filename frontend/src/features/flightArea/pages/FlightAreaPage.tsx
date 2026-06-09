@@ -4,8 +4,6 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 
-const API_BASE_URL = 'http://localhost:8003';
-
 const normalizeFileName = (value: string) => {
   const trimmed = value.trim().replace(/^"(.*)"$/, '$1');
   const withoutPrefix = trimmed.replace(/^\.\//, '');
@@ -183,10 +181,6 @@ const FlightAreaPage: React.FC<FlightAreaPageProps> = ({ onModelImported }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const activeObjectUrlsRef = useRef<string[]>([]);
-  const [sfmIp, setSfmIp] = useState('');
-  const [sfmPort, setSfmPort] = useState('');
-  const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'ok' | 'error'>('idle');
-  const [checkMessage, setCheckMessage] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [importMessage, setImportMessage] = useState('No model loaded');
 
@@ -221,22 +215,6 @@ const FlightAreaPage: React.FC<FlightAreaPageProps> = ({ onModelImported }) => {
     alignItems: 'center',
     marginTop: 8,
   };
-
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/app-setting/network/flight-area-build-server`);
-        const data = await res.json().catch(() => null);
-        if (res.ok && data?.status === 'ok') {
-          setSfmIp(String(data?.ip ?? ''));
-          setSfmPort(String(data?.port ?? ''));
-        }
-      } catch {
-        // Ignore load errors.
-      }
-    };
-    loadSettings();
-  }, []);
 
   const releaseActiveObjectUrls = () => {
     activeObjectUrlsRef.current.forEach((url) => {
@@ -516,97 +494,6 @@ const FlightAreaPage: React.FC<FlightAreaPageProps> = ({ onModelImported }) => {
     <div className="config-panel" style={pageStyle}>
       <h2>Project Management</h2>
       <div style={{ maxWidth: 480 }}>
-        <h3>Server Setting</h3>
-        <div style={{ display: 'flex', gap: 20, justifyContent: 'flex-start', alignItems: 'center' }}>
-          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span>IP</span>
-            <input
-              type="text"
-              placeholder="127.0.0.1"
-              value={sfmIp}
-              onChange={(e) => setSfmIp(e.target.value)}
-              style={controlStyle}
-            />
-          </label>
-
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span>Port</span>
-              <input
-                type="number"
-                placeholder="8000"
-                value={sfmPort}
-                onChange={(e) => setSfmPort(e.target.value)}
-                min={1}
-                max={65535}
-                style={controlStyle}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={async () => {
-                const ip = sfmIp.trim();
-                const port = sfmPort.trim();
-                if (!ip || !port) {
-                  setCheckStatus('error');
-                  setCheckMessage('IP and Port required');
-                  return;
-                }
-
-                setCheckStatus('checking');
-                setCheckMessage('Checking...');
-                try {
-                  const query = `ip=${encodeURIComponent(ip)}&port=${encodeURIComponent(port)}`;
-                  const res = await fetch(`${API_BASE_URL}/flight-area/check-connection?${query}`, {
-                    method: 'POST',
-                  });
-                  const data = await res.json().catch(() => null);
-                  if (res.ok && data?.reachable) {
-                    setCheckStatus('ok');
-                    setCheckMessage('OK');
-                  } else {
-                    setCheckStatus('error');
-                    setCheckMessage(data?.message || `Failed (${res.status})`);
-                  }
-                } catch (err) {
-                  setCheckStatus('error');
-                  setCheckMessage('Cannot reach backend');
-                }
-              }}
-              disabled={checkStatus === 'checking'}
-              style={controlStyle}
-            >
-              Check
-            </button>
-            <span
-              aria-live="polite"
-              style={{
-                minWidth: 100,
-                color: checkStatus === 'ok' ? '#1b7f2a' : checkStatus === 'error' ? '#b00020' : '#666',
-              }}
-            >
-              {checkMessage}
-            </span>
-            <button
-              type="button"
-              onClick={async () => {
-                const ip = sfmIp.trim();
-                const port = sfmPort.trim();
-                if (!ip || !port) {
-                  return;
-                }
-
-                const query = `ip=${encodeURIComponent(ip)}&port=${encodeURIComponent(port)}`;
-                await fetch(`${API_BASE_URL}/app-setting/network/flight-area-build-server?${query}`, {
-                  method: 'POST',
-                });
-              }}
-              style={controlStyle}
-            >
-              Save
-            </button>
-          </div>
-        </div>
         <h3>Project</h3>
         <div style={projectRowStyle}>
           <span style={labelTextStyle}>Create Project</span>

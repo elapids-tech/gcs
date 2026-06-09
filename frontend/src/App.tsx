@@ -2,15 +2,16 @@ import React, { useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { CameraSettingsPage } from './features/cameraSettings';
 import { FlightAreaPage } from './features/flightArea';
+import GcsSettingsPage from './features/gcsSettings/pages/GcsSettingsPage';
 import { Viewer3dPage, disposeLoadedObject } from './features/viewer3d';
 import './styles.css';
 
 function MainLayout() {
-  const [activeTab, setActiveTab] = useState<'preview' | 'config' | 'flight'>('preview');
+  const [activeTab, setActiveTab] = useState<'preview' | 'config' | 'flight' | 'gsc'>('preview');
   const [importedObject, setImportedObject] = useState<THREE.Group | null>(null);
   const [environmentMap, setEnvironmentMap] = useState<THREE.Texture | null>(null);
 
-  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLSpanElement>, tab: 'preview' | 'config' | 'flight') => {
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLSpanElement>, tab: 'preview' | 'config' | 'flight' | 'gsc') => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       setActiveTab(tab);
@@ -66,6 +67,15 @@ function MainLayout() {
         >
           Camera Settings
         </span>
+        <span
+          role="button"
+          tabIndex={0}
+          className={`top-tab ${activeTab === 'gsc' ? 'active' : ''}`}
+          onClick={() => setActiveTab('gsc')}
+          onKeyDown={(event) => handleTabKeyDown(event, 'gsc')}
+        >
+          GSC Settings
+        </span>
       </div>
 
       <div className="main-content">
@@ -75,6 +85,8 @@ function MainLayout() {
           <div className="config-panel">
             <CameraSettingsPage />
           </div>
+        ) : activeTab === 'gsc' ? (
+          <GcsSettingsPage />
         ) : (
           <FlightAreaPage onModelImported={handleModelImported} />
         )}
