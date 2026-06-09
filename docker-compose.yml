@@ -1,6 +1,24 @@
 services:
+
+  development:
+    container_name: gcs_dev
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/gcs
+    working_dir: /gcs
+    tty: true
+    stdin_open: true
+    command: sh -c "sleep infinity"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/gcs
+    networks:
+      - udp_network
+
   backend:
-    container_name: idls_app_backend
+    container_name: gcs_backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -10,19 +28,19 @@ services:
       - "14610:14610/udp"
       - "14611:14611/udp"
     volumes:
-      - ./:/idls_app
+      - ./:/gcs
+    working_dir: /gcs
     tty: true
     stdin_open: true
-    # コンテナ起動時に自動でFastAPIサーバを起動したい場合は、下記のコメントアウトを外してください。
-    # command: sh -c "uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload & sleep infinity"
+    command: sh -c "exec uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
     environment:
       - PYTHONUNBUFFERED=1
-      - PYTHONPATH=/idls_app
+      - PYTHONPATH=/gcs
     networks:
       - udp_network
 
   frontend:
-    container_name: idls_app_frontend
+    container_name: gcs_frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -32,8 +50,11 @@ services:
     ports:
       - '3000:3000'
     volumes:
-      - ./frontend:/idls_app/frontend
-      - node_modules:/idls_app/frontend/node_modules
+      - ./frontend:/gcs/frontend
+      - node_modules:/gcs/frontend/node_modules
+    working_dir: /gcs/frontend
+    stdin_open: true
+    command: sh -c "npm start"
     networks:
       - udp_network
 
