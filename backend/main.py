@@ -22,7 +22,7 @@ from backend.mavlink_client import MavlinkClient
 from backend.camera_calibration import CameraCalibration
 from backend.video_recorder import VideoRecorder
 from backend.flight_area import flight_area
-from backend.app_setting import app_setting
+from backend.app_setting import app_setting, ensure_settings_file
 
 try:
     from uvicorn.protocols.utils import ClientDisconnected
@@ -828,6 +828,14 @@ async def startup_event():
     """起動時の初期化（UDP受信開始とテレメトリ送信タスク開始）"""
     global udp_transport, udp_protocol, placeholder_left_jpeg, placeholder_right_jpeg
     print("[startup] FastAPI app starting...")
+
+    try:
+        ensure_settings_file()
+        print("[startup] app settings file ready")
+    except Exception as e:
+        print(f"[startup] app settings init failed: {repr(e)}")
+        traceback.print_exc()
+        raise
 
     try:
         placeholder_img = build_placeholder_image(placeholder_size)

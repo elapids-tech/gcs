@@ -11,6 +11,46 @@ app_setting = APIRouter(prefix="/app-setting", tags=["app-setting"])
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "app_settings.json")
 
 
+def _default_settings() -> dict:
+	return {
+		"network": {
+			"sfm-server": {
+				"ip": "",
+				"port": 0,
+			}
+		}
+	}
+
+
+def _normalize_settings(data: dict) -> dict:
+	settings = data if isinstance(data, dict) else {}
+	network = settings.get("network", {})
+	if not isinstance(network, dict):
+		network = {}
+
+	sfm = network.get("sfm-server", {})
+	if not isinstance(sfm, dict):
+		sfm = {}
+
+	network["sfm-server"] = {
+		"ip": str(sfm.get("ip", "")).strip(),
+		"port": int(sfm.get("port", 0) or 0),
+	}
+	settings["network"] = network
+	return settings
+
+
+def ensure_settings_file() -> None:
+	if not os.path.exists(SETTINGS_FILE):
+		_save_settings(_default_settings())
+		return
+
+	current = _load_settings()
+	normalized = _normalize_settings(current)
+	if normalized != current:
+		_save_settings(normalized)
+
+
 def _load_settings() -> dict:
 	if not os.path.exists(SETTINGS_FILE):
 		return {}
