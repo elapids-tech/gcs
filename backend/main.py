@@ -21,7 +21,7 @@ from starlette.websockets import WebSocketDisconnect, WebSocketState
 from backend.mavlink_client import MavlinkClient
 from backend.camera_calibration import CameraCalibration
 from backend.video_recorder import VideoRecorder
-from backend.flight_area import flight_area
+from backend.projects import flight_area
 from backend.app_setting import app_setting, ensure_settings_file
 
 try:
