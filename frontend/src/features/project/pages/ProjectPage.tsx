@@ -173,11 +173,11 @@ const convertImportedObjectToZUp = (object: THREE.Object3D) => {
   object.updateMatrixWorld(true);
 };
 
-type FlightAreaPageProps = {
+type ProjectPageProps = {
   onModelImported: (object: THREE.Group, environmentMap: THREE.Texture | null) => void;
 };
 
-const FlightAreaPage: React.FC<FlightAreaPageProps> = ({ onModelImported }) => {
+const ProjectPage: React.FC<ProjectPageProps> = ({ onModelImported }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const activeObjectUrlsRef = useRef<string[]>([]);
@@ -572,4 +572,4 @@ const FlightAreaPage: React.FC<FlightAreaPageProps> = ({ onModelImported }) => {
   );
 };
 
-export default FlightAreaPage;
+export default ProjectPage;

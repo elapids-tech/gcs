@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { CameraSettingsPage } from './features/cameraSettings';
-import { FlightAreaPage } from './features/flightArea';
+import { ProjectPage } from './features/project';
 import GcsSettingsPage from './features/gcsSettings/pages/GcsSettingsPage';
 import { Viewer3dPage, disposeLoadedObject } from './features/viewer3d';
 import './styles.css';
@@ -88,7 +88,7 @@ function MainLayout() {
         ) : activeTab === 'gsc' ? (
           <GcsSettingsPage />
         ) : (
-          <FlightAreaPage onModelImported={handleModelImported} />
+          <ProjectPage onModelImported={handleModelImported} />
         )}
       </div>
     </div>
