@@ -32,10 +32,12 @@ services:
     working_dir: /gcs
     tty: true
     stdin_open: true
-    command: sh -c "exec uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: sh -c "exec uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /gcs/backend"
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/gcs
+      - WATCHFILES_FORCE_POLLING=true
+      - WATCHFILES_POLL_DELAY_MS=300
     networks:
       - udp_network
 
