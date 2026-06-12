@@ -1,8 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
+
+const API_BASE_URL = 'http://localhost:8003';
+const CHECK_TIMEOUT_MS = 3000;
 
 const normalizeFileName = (value: string) => {
   const trimmed = value.trim().replace(/^"(.*)"$/, '$1');
@@ -177,12 +180,20 @@ type ProjectPageProps = {
   onModelImported: (object: THREE.Group, environmentMap: THREE.Texture | null) => void;
 };
 
+type SfmServerInfo = {
+  ip: string;
+  port: number;
+};
+
 const ProjectPage: React.FC<ProjectPageProps> = ({ onModelImported }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const activeObjectUrlsRef = useRef<string[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [importMessage, setImportMessage] = useState('No model loaded');
+  const [sfmServerInfo, setSfmServerInfo] = useState<SfmServerInfo | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'checking' | 'ok' | 'error'>('idle');
+  const [connectionMessage, setConnectionMessage] = useState('Not checked');
 
   const pageStyle: React.CSSProperties = {
     padding: '0px 10px',
@@ -236,6 +247,74 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ onModelImported }) => {
     folderInputRef.current.setAttribute('webkitdirectory', '');
     folderInputRef.current.setAttribute('directory', '');
   }, []);
+
+  const fetchSfmServerInfo = useCallback(async () => {
+    const res = await fetch(`${API_BASE_URL}/projects/sfm-server-info`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || data?.status !== 'ok') {
+      throw new Error(data?.message || `Failed to load SFM server info (${res.status})`);
+    }
+
+    const ip = String(data?.ip ?? '').trim();
+    const port = Number(data?.port ?? 0);
+    if (!ip || !Number.isFinite(port) || port < 1 || port > 65535) {
+      throw new Error('Saved SFM server IP/Port is invalid');
+    }
+
+    const nextInfo = { ip, port };
+    setSfmServerInfo(nextInfo);
+    return nextInfo;
+  }, []);
+
+  const checkSfmConnection = useCallback(async (info: SfmServerInfo) => {
+    setConnectionStatus('checking');
+    setConnectionMessage(`Checking ${info.ip}:${info.port}...`);
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, CHECK_TIMEOUT_MS);
+
+    try {
+      const query = `ip=${encodeURIComponent(info.ip)}&port=${encodeURIComponent(info.port)}`;
+      const res = await fetch(`${API_BASE_URL}/projects/check-connection?${query}`, {
+        method: 'POST',
+        signal: controller.signal,
+      });
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.reachable) {
+        setConnectionStatus('ok');
+        setConnectionMessage(`Connected (${info.ip}:${info.port})`);
+      } else {
+        setConnectionStatus('error');
+        setConnectionMessage(data?.message || `Connection failed (${res.status})`);
+      }
+    } catch (error) {
+      setConnectionStatus('error');
+      if (error instanceof Error && error.name === 'AbortError') {
+        setConnectionMessage('Timeout (3s)');
+      } else {
+        setConnectionMessage('Cannot reach backend API');
+      }
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  }, []);
+
+  const refreshSfmConnection = useCallback(async () => {
+    try {
+      const info = await fetchSfmServerInfo();
+      await checkSfmConnection(info);
+    } catch (error) {
+      setConnectionStatus('error');
+      setConnectionMessage(error instanceof Error ? error.message : 'Failed to load SFM server info');
+    }
+  }, [checkSfmConnection, fetchSfmServerInfo]);
+
+  useEffect(() => {
+    refreshSfmConnection();
+  }, [refreshSfmConnection]);
 
   const handleOpenImportDialog = () => {
     fileInputRef.current?.click();
@@ -522,6 +601,27 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ onModelImported }) => {
           <button type="button" style={controlStyle}>
             Run
           </button>
+        </div>
+        <div style={projectRowStyle}>
+          <span style={labelTextStyle}>SfM Connection</span>
+          <button
+            type="button"
+            onClick={refreshSfmConnection}
+            disabled={connectionStatus === 'checking'}
+            style={{ ...controlStyle, width: projectControlWidth }}
+          >
+            {connectionStatus === 'checking' ? 'Checking...' : 'Check Connection'}
+          </button>
+          <span
+            aria-live="polite"
+            style={{
+              color: connectionStatus === 'ok' ? '#1b7f2a' : connectionStatus === 'error' ? '#b00020' : '#444',
+              fontSize: 12,
+            }}
+          >
+            {connectionMessage}
+            {sfmServerInfo ? ` / ${sfmServerInfo.ip}:${sfmServerInfo.port}` : ''}
+          </span>
         </div>
         <div style={projectRowStyle}>
           <span style={labelTextStyle}>Import Model</span>

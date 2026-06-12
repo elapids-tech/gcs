@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 const API_BASE_URL = 'http://localhost:8003';
 const CHECK_TIMEOUT_MS = 3000;
+const SETTINGS_LOAD_TIMEOUT_MS = 3000;
 
 const GcsSettingsPage: React.FC = () => {
   const [sfmIp, setSfmIp] = useState('');
   const [sfmPort, setSfmPort] = useState('');
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
   const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'ok' | 'error'>('idle');
   const [checkMessage, setCheckMessage] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
@@ -26,22 +28,44 @@ const GcsSettingsPage: React.FC = () => {
     boxSizing: 'border-box',
   };
 
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/app-setting/network/sfm-server`);
-        const data = await res.json().catch(() => null);
-        if (res.ok && data?.status === 'ok') {
-          setSfmIp(String(data?.ip ?? ''));
-          setSfmPort(String(data?.port ?? ''));
-        }
-      } catch {
+  const loadSettings = useCallback(async () => {
+    setIsLoadingSettings(true);
+    setSaveMessage('Loading saved settings...');
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, SETTINGS_LOAD_TIMEOUT_MS);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/app-setting/network/sfm-server`, {
+        signal: controller.signal,
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || data?.status !== 'ok') {
+        setSaveMessage(data?.message || `Failed to load settings (${res.status})`);
+        return;
+      }
+
+      setSfmIp(String(data?.ip ?? ''));
+      setSfmPort(String(data?.port ?? ''));
+      setSaveMessage('');
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        setSaveMessage(`Failed to load settings (timeout ${SETTINGS_LOAD_TIMEOUT_MS / 1000}s)`);
+      } else {
         setSaveMessage('Failed to load saved settings');
       }
-    };
-
-    loadSettings();
+    } finally {
+      window.clearTimeout(timeoutId);
+      setIsLoadingSettings(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const handleCheck = async () => {
     const ip = sfmIp.trim();
@@ -123,6 +147,7 @@ const GcsSettingsPage: React.FC = () => {
               placeholder="127.0.0.1"
               value={sfmIp}
               onChange={(event) => setSfmIp(event.target.value)}
+              disabled={isLoadingSettings}
               style={{ ...controlStyle, width: 120 }}
             />
           </label>
@@ -135,13 +160,14 @@ const GcsSettingsPage: React.FC = () => {
                 placeholder="8000"
                 value={sfmPort}
                 onChange={(event) => setSfmPort(event.target.value)}
+                disabled={isLoadingSettings}
                 style={{ ...controlStyle, width: 72 }}
               />
             </label>
             <button
               type="button"
               onClick={handleCheck}
-              disabled={checkStatus === 'checking'}
+              disabled={checkStatus === 'checking' || isLoadingSettings}
               style={controlStyle}
             >
               Check
@@ -155,7 +181,7 @@ const GcsSettingsPage: React.FC = () => {
             >
               {checkMessage}
             </span>
-            <button type="button" onClick={handleSave} style={controlStyle}>
+            <button type="button" onClick={handleSave} disabled={isLoadingSettings} style={controlStyle}>
               Save
             </button>
           </div>

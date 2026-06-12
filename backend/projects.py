@@ -1,18 +1,50 @@
+import json
+import os
 import socket
 import urllib.error
 import urllib.request
 
 from fastapi import APIRouter
 
-flight_area = APIRouter(prefix="/flight-area", tags=["flight-area"])
+projects = APIRouter(prefix="/projects", tags=["projects"])
+# Backward compatible alias used by backend.main import.
+flight_area = projects
+app_settings_json_path = os.path.join(os.path.dirname(__file__), "app_settings.json")
 
 
-@flight_area.get("/health")
-def health_check():
-    return {"status": "ok"}
+def _read_sfm_server_settings() -> tuple[str, int]:
+    try:
+        with open(app_settings_json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return "", 0
 
+    network = data.get("network", {}) if isinstance(data, dict) else {}
+    if not isinstance(network, dict):
+        return "", 0
 
-@flight_area.post("/check-connection")
+    sfm = network.get("sfm-server", {})
+    if not isinstance(sfm, dict):
+        return "", 0
+
+    ip = str(sfm.get("ip", "")).strip()
+    try:
+        port = int(sfm.get("port", 0) or 0)
+    except (TypeError, ValueError):
+        port = 0
+
+    return ip, port
+
+@projects.get("/sfm-server-info")
+def get_sfm_server_info():
+    ip, port = _read_sfm_server_settings()
+    return {
+        "status": "ok",
+        "ip": ip,
+        "port": port,
+    }
+
+@projects.post("/check-connection")
 def check_connection(ip: str, port: int):
     ip = ip.strip()
     port = int(port)
@@ -45,3 +77,4 @@ def check_connection(ip: str, port: int):
             "reachable": False,
             "message": f"Connection failed: {type(exc).__name__}",
         }
+
